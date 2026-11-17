@@ -6,20 +6,22 @@ import { userStats, weekStats, weekRange } from './stats.js';
 
 // ---------------------------------------------------------------- the lamp
 let lampN = 0;
-export function lamp(level, lit, size = 64, accent = false) {
+export function lamp(level, lit, size = 64) {
   const id = 'lc' + (++lampN); const lv = Math.max(0, Math.min(1, level));
-  const top = 40, bottom = 78; const y = bottom - (bottom - top) * lv;
-  return `<svg class="lamp ${lit ? 'lit' : ''} ${accent ? 'acc' : ''}" width="${size}" height="${size * .82}" viewBox="0 0 120 98" aria-hidden="true">
-    <defs><clipPath id="${id}"><path d="M18 58c0-12 18-20 44-20s42 8 42 20-18 21-42 21-44-9-44-21z"/></clipPath>
-    <linearGradient id="${id}o" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7D58C"/><stop offset="1" stop-color="#C9A04E"/></linearGradient></defs>
-    <g class="flame"><path d="M10 44c-6-8-1-17 3-24 2 7 9 11 6 19-1 4-5 7-9 5z" fill="url(#flg)"/><path d="M11 42c-3-4 0-8 2-11 1 3 4 5 3 9-1 2-3 3-5 2z" fill="#fff6d6"/></g>
-    <path d="M18 58c0-12 18-20 44-20s42 8 42 20-18 21-42 21-44-9-44-21z" fill="#0b3a57"/>
-    <rect class="oil" x="10" y="${y}" width="100" height="${100 - y}" fill="url(#${id}o)" clip-path="url(#${id})" style="--lv:${lv}"/>
-    <path d="M18 58c0-12 18-20 44-20s42 8 42 20-18 21-42 21-44-9-44-21z" fill="none" stroke="#02304A" stroke-width="4"/>
-    <path d="M22 54L6 46c-3-1-3-5 1-5l20 4" fill="#0b3a57" stroke="#02304A" stroke-width="3.5" stroke-linejoin="round"/>
-    <ellipse cx="64" cy="40" rx="13" ry="4.5" fill="#02304A"/>
-    <path d="M102 54c10-2 14 6 10 12-3 4-8 4-12 2" fill="none" stroke="#02304A" stroke-width="4.5" stroke-linecap="round"/>
-    <path d="M38 79h50l-6 9H44z" fill="#02304A"/>
+  const top = 30, bot = 84; const y = bot - (bot - top) * lv; const fy = Math.max(top - 2, y - 2);
+  const H = size * 1.5;
+  return `<svg class="lamp ${lit ? 'lit' : ''}" width="${size}" height="${H}" viewBox="0 0 64 96" aria-hidden="true">
+    <defs><clipPath id="${id}"><path d="M14 30h36c2 0 4 2 4 4v38c0 9-8 16-17 16h-10c-9 0-17-7-17-16V34c0-2 2-4 4-4z"/></clipPath>
+    <linearGradient id="${id}o" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBE3A2"/><stop offset=".35" stop-color="#F2C46D"/><stop offset="1" stop-color="#B8862E"/></linearGradient>
+    <radialGradient id="${id}h"><stop offset="0" stop-color="rgba(255,214,140,.75)"/><stop offset="1" stop-color="rgba(255,214,140,0)"/></radialGradient></defs>
+    <circle class="halo" cx="32" cy="${fy - 8}" r="26" fill="url(#${id}h)"/>
+    <path class="metal" d="M32 2v8M22 12h20l-3 8H25z" fill="#02304A" stroke="#02304A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="metal" d="M18 22h28v6H18z" fill="#02304A"/>
+    <path class="glass" d="M14 30h36c2 0 4 2 4 4v38c0 9-8 16-17 16h-10c-9 0-17-7-17-16V34c0-2 2-4 4-4z"/>
+    <g clip-path="url(#${id})"><path class="oil" d="M6 ${y + 1.5}q6.5-3 13 0t13 0t13 0t13 0V100H6z" fill="url(#${id}o)"/></g>
+    <path d="M17 38v30" stroke="rgba(255,255,255,.75)" stroke-width="2.5" stroke-linecap="round"/>
+    <g class="flame"><path d="M32 ${fy - 20}c5 6 7 10 5 15-1 3-3 5-5 5s-4-2-5-5c-2-5 0-9 5-15z" fill="url(#flg)"/><path d="M32 ${fy - 9}c2 2 3 4 2 6-.5 1-1 2-2 2s-1.5-1-2-2c-1-2 0-4 2-6z" fill="#fff6d6"/></g>
+    <path class="metal" d="M22 88h20l2 6H20z" fill="#02304A"/>
   </svg>`;
 }
 const flameDefs = '<svg width="0" height="0" style="position:absolute"><defs><radialGradient id="flg" cx="50%" cy="70%" r="70%"><stop offset="0" stop-color="#fff3c8"/><stop offset=".45" stop-color="#F7B84A"/><stop offset="1" stop-color="#E5612A"/></radialGradient></defs></svg>';
@@ -48,17 +50,17 @@ function boardLamps(segs) {
   <section class="altar">
     <p class="altar-note">الزيت = الانتظام في القراءة في معادها، والشعلة = قريت النهارده${range === 'week' ? `<br>من ${fmtDate(ws, false)} لـ ${fmtDate(we, false)}` : ''}</p>
     <div class="podium">${order.map((r) => { const rank = rows.indexOf(r) + 1; return `<div class="pod p${rank} ${r.u.phone === S.me.phone ? 'me' : ''}">
-      <div class="pl">${lamp(lvl(r), r.s.readToday, rank === 1 ? 104 : 84, true)}</div><b class="pn">${esc(first(r.u.name))}</b>
+      <div class="pl">${lamp(lvl(r), r.s.readToday, rank === 1 ? 74 : 60)}</div><b class="pn">${esc(first(r.u.name))}</b>
       <span class="ps">${range === 'week' ? `${ar(r.w.onTime)} من ${ar(r.w.due)}` : `${ar(r.s.consistency)}٪ انتظام`}</span><div class="step"><span>${ar(rank)}</span></div></div>`; }).join('')}</div>
   </section>
   ${meRank >= 0 ? `<a class="mepill" href="#me-row">ترتيبك <b>${ar(meRank + 1)}</b> من ${ar(rows.length)}${meRank > 0 ? ` <small>فاضلك ${ar(Math.max(1, Math.ceil((rows[meRank - 1].key - rows[meRank].key) / (range === 'week' ? 1000 : 10000)) || 1))} يوم في معاده وتعدّي اللي قبلك</small>` : ' 👑'}</a>` : ''}
   <ol class="lamps">${rows.map((r, i) => `<li class="lrow ${r.u.phone === S.me.phone ? 'me' : ''}" ${r.u.phone === S.me.phone ? 'id="me-row"' : ''} style="--i:${Math.min(i, 14)}">
-    <span class="rk">${ar(i + 1)}</span>${lamp(lvl(r), r.s.readToday, 46)}<span class="ln"><b>${esc(r.u.name)}</b>
+    <span class="rk">${ar(i + 1)}</span>${lamp(lvl(r), r.s.readToday, 30)}<span class="ln"><b>${esc(r.u.name)}</b>
     <small>${range === 'week' ? `${ar(r.w.onTime)} يوم في معاده من ${ar(r.w.due)}` : `${ar(r.s.onTime)} في معاده${r.s.late ? ` <i class="lt">${ar(r.s.late)} متأخر</i>` : ''}${r.s.streak > 1 ? ` <i class="st">🔥${ar(r.s.streak)}</i>` : ''}`}</small></span>
     <span class="pc">${ar(range === 'week' ? r.w.consistency : r.s.consistency)}٪</span></li>`).join('')}</ol>
   ${logos()}</div>`;
   $$('.range button').forEach((b) => b.onclick = () => { S.boardRange = b.dataset.r; boardLamps(segs); });
-  if (!reduce) $$('.lamp .oil').forEach((o) => o.animate([{ transform: 'translateY(40px)' }, { transform: 'none' }], { duration: 1400, easing: 'cubic-bezier(.2,.8,.2,1)', delay: 150 }));
+  if (!reduce) $$('.lamp .oil').forEach((o, i) => o.animate([{ transform: 'translateY(60px)' }, { transform: 'none' }], { duration: 1500, easing: 'cubic-bezier(.2,.8,.2,1)', delay: 120 + Math.min(i, 12) * 40, fill: 'backwards' }));
 }
 function boardHonor(segs) {
   const pub = S.exams.filter((e) => e.status === 'published' && (e.results || []).length).sort((a, b) => b.createdAt - a.createdAt);

@@ -421,3 +421,17 @@ details.card summary{cursor:pointer;list-style:none}details.card summary::-webki
 .reader .rhead .sp{flex:1}
 .xacts .btn{white-space:nowrap;flex:1 1 40%}
 .lamp{flex:none}
+
+/* reading: no bottom nav, selection bar sits above the browser bar */
+body.reading #app{padding-bottom:calc(var(--safe-b) + 120px)}
+.selbar{bottom:calc(var(--safe-b) + 16px);max-width:calc(100% - 24px)}
+body:not(.reading) .selbar{bottom:calc(var(--nav-h) + var(--safe-b) + 24px)}
+#app{padding-bottom:calc(var(--nav-h) + var(--safe-b) + 48px)}
+/* the glass lamp */
+.lamp .glass{fill:rgba(255,255,255,.55);stroke:#02304A;stroke-width:2.6}
+.altar .lamp .glass{fill:rgba(255,255,255,.12);stroke:#F2C46D}
+.altar .lamp .metal{fill:#F2C46D}
+.lamp .flame{opacity:0;transition:opacity .5s;transform-box:fill-box;transform-origin:50% 100%}
+.lamp.lit .flame{opacity:1;animation:flick 1.7s ease-in-out infinite}
+.lamp .halo{opacity:0}.lamp.lit .halo{opacity:1}
+.selbar .btn{white-space:nowrap}
