@@ -187,7 +187,7 @@ function vPlan() {
 function prayedSet() { try { return new Set(JSON.parse(localStorage.getItem('la3rafo:prayed') || '[]')); } catch (e) { return new Set(); } }
 function vWall() {
   const tab = S.wallTab; const list = S.wall.filter((w) => w.type === tab).sort((a, b) => b.at - a.at); const pr = prayedSet();
-  APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>الجماعة 🤍</h1><p>«احملوا بعضكم أثقال بعض»</p></div>
+  APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>الأسرة 🤍</h1><p>«احملوا بعضكم أثقال بعض»</p></div>
   <div class="seg" role="tablist"><button class="${tab === 'verse' ? 'on' : ''}" data-t="verse">✨ آيات لمستنا</button><button class="${tab === 'prayer' ? 'on' : ''}" data-t="prayer">🙏 طلبات صلاة</button></div>
   <section class="card compose"><textarea id="ptext" maxlength="400" placeholder="${tab === 'verse' ? 'اكتب الآية اللي لمستك النهارده…' : 'اكتب طلبتك… وإحنا هنصلّي لك'}"></textarea>${tab === 'verse' ? '<input id="pref" maxlength="40" placeholder="الشاهد (مثلًا: تكوين ١: ٣)">' : ''}
   <button class="btn primary block" id="psend" style="margin-top:10px">${tab === 'verse' ? 'شارك الآية' : 'اطلب صلاة'}</button></section>
@@ -303,7 +303,8 @@ function popup() {
 // ---------- router ----------
 function route() {
   if (!S.me) return vOnboard();
-  NAV.hidden = false; APP.classList.remove('full');
+  APP.classList.remove('full');
+  { const rr = (location.hash || '#/today').split('/')[1]; NAV.hidden = rr === 'read' || rr === 'exam'; document.body.classList.toggle('reading', rr === 'read'); }
   const [, r = 'today', a, b] = (location.hash || '#/today').split('/');
   if (r === 'servants') { location.hash = '#/khadem'; return; }
   try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } if (r !== 'read') document.body.classList.remove('night');
