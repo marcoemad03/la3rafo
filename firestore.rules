@@ -1,16 +1,13 @@
 rules_version = '2';
-// قواعد أمان «لأعرفه»
 service cloud.firestore {
   match /databases/{db}/documents {
     function signedIn() { return request.auth != null; }
     function isServant() { return signedIn() && exists(/databases/$(db)/documents/admins/$(request.auth.uid)); }
     function okUser(d) {
-      return d.keys().hasOnly(['name','phone','uids','readDays','readAt','createdAt','lastSeen'])
+      return d.keys().hasOnly(['name','phone','uids','readDays','readAt','quiz','createdAt','lastSeen'])
         && d.name is string && d.name.size() >= 2 && d.name.size() <= 40
         && d.readDays is list && d.readDays.size() <= 46;
     }
-
-    // المشتركين: المفتاح هو رقم الموبايل
     match /users/{phone} {
       allow read: if signedIn();
       allow create: if signedIn() && phone.matches('^01[0125][0-9]{8}$')
@@ -19,14 +16,17 @@ service cloud.firestore {
         && request.resource.data.phone == resource.data.phone;
       allow delete: if isServant();
     }
-
-    // كلمة اليوم والسؤال — الخدام بس
-    match /days/{day} {
-      allow read: if signedIn();
-      allow write: if isServant();
+    match /days/{day} { allow read: if signedIn(); allow write: if isServant(); }
+    match /chq/{key} { allow read: if signedIn(); allow write: if isServant(); }
+    match /exams/{id} { allow read: if signedIn(); allow write: if isServant(); }
+    match /examKeys/{id} { allow read, write: if isServant(); }
+    match /submissions/{sid} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && sid == request.resource.data.examId + '_' + request.resource.data.phone
+        && get(/databases/$(db)/documents/exams/$(request.resource.data.examId)).data.status == 'open';
+      allow read: if isServant() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isServant();
     }
-
-    // آيات لمستنا وطلبات الصلاة
     match /wall/{id} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid
@@ -37,14 +37,11 @@ service cloud.firestore {
         && request.resource.data.prayed == resource.data.prayed + 1;
       allow delete: if isServant() || (signedIn() && resource.data.uid == request.auth.uid);
     }
-
-    // الخدام: أي حد يعرف الكود يبقى خادم على جهازه
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.code == get(/databases/$(db)/documents/secrets/servants).data.code;
     }
-    // كود الخدام: بيتحدد مرة واحدة، ومحدش يقدر يقراه
     match /secrets/servants {
       allow read: if false;
       allow create: if signedIn() && request.resource.data.code is string && request.resource.data.code.size() >= 4;

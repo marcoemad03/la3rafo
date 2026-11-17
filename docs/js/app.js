@@ -1,59 +1,9 @@
 import { DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
 import { init, api, on, mode, normPhone, validPhone } from './data.js';
-
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const APP = $('#app'); const NAV = $('#nav');
-const S = { me: null, users: [], wall: [], days: {}, text: null, wallTab: 'verse', fs: 21 };
-try { S.fs = +localStorage.getItem('la3rafo:fs') || 21; } catch (e) { /* ignore */ }
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-// ---------- helpers ----------
-const PALETTE = ['#02304A', '#C22026', '#2E7D6B', '#B07A1E', '#6B3FA0', '#0E7C9E', '#A0522D', '#3D5A80'];
-function color(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; }
-const initial = (n) => (String(n || '؟').trim()[0] || '؟');
-const first = (n) => String(n || '').trim().split(/\s+/)[0];
-function avatar(name, size = 38) { return `<span class="av" style="background:${color(name)};width:${size}px;height:${size}px">${esc(initial(name))}</span>`; }
-function timeAgo(ms) {
-  const m = Math.max(1, Math.round((Date.now() - ms) / 6e4));
-  if (m < 60) return `من ${ar(m)} دقيقة`; const h = Math.round(m / 60); if (h < 24) return `من ${ar(h)} ساعة`; return `من ${ar(Math.round(h / 24))} يوم`;
-}
-let toastT; function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
-function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) { /* ignore */ } }
-function myRead() { const u = S.users.find((x) => x.phone === S.me?.phone) || S.me; return new Set((u && u.readDays) || []); }
-function greeting() { const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Cairo', hour: 'numeric', hour12: false }).format(new Date()); return h < 12 ? 'صباح الخير' : h < 17 ? 'نهارك سعيد' : 'مساء الخير'; }
-async function loadText() { if (!S.text) S.text = await (await fetch('data/text.json')).json(); return S.text; }
-const ICON = {
-  back: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
-  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
-  minus: '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>',
-  check: '<svg viewBox="0 0 24 24" width="18" height="18" style="fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M5 12l5 5 9-10"/></svg>',
-  wa: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .6l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>',
-};
-function topbar() {
-  const st = streak(myRead());
-  return `<header class="top"><a class="brand" href="#/today" aria-label="لأعرفه"><img class="em" src="assets/img/emblem_s.png" alt=""><img class="nm" src="assets/img/name.png" alt="لأعرفه">${mode === 'demo' ? '<span class="demo-tag">تجريبي</span>' : ''}</a>
-  <span class="chip fire" title="أيام متتالية">🔥 <b>${ar(st)}</b> يوم</span></header>`;
-}
-function logos() {
-  return `<div class="logos"><img src="assets/img/family.png" alt="أسرة القوي الأنبا موسى"><img src="assets/img/church.png" alt="كنيسة السيدة العذراء مريم"></div>
-  <p class="foot-note">أسرة القوي الأنبا موسى للجامعيين<br>كنيسة السيدة العذراء مريم بمدينة السادات</p>`;
-}
-
-// ---------- light burst fx ----------
-const fx = $('#fx'); const ctx = fx.getContext('2d'); let parts = []; let fxOn = false;
-function burst(x, y, n = 90) {
-  if (reduce) return; const dpr = devicePixelRatio || 1; fx.width = innerWidth * dpr; fx.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 7; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 3, r: 1.5 + Math.random() * 3.5, life: 1, c: Math.random() < .5 ? '255,214,140' : '255,245,220' }); }
-  if (!fxOn) { fxOn = true; requestAnimationFrame(stepFx); }
-}
-function stepFx() {
-  ctx.clearRect(0, 0, fx.width, fx.height);
-  parts = parts.filter((p) => p.life > 0);
-  for (const p of parts) { p.x += p.vx; p.y += p.vy; p.vy += .12; p.vx *= .985; p.life -= .016; ctx.beginPath(); ctx.fillStyle = `rgba(${p.c},${Math.max(0, p.life)})`; ctx.shadowColor = `rgba(${p.c},1)`; ctx.shadowBlur = 12; ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
-  if (parts.length) requestAnimationFrame(stepFx); else { fxOn = false; ctx.clearRect(0, 0, fx.width, fx.height); }
-}
+import { $, $$, esc, APP, NAV, S, reduce, color, initial, first, avatar, timeAgo, toast, vibrate, myRead, meU, greeting, loadText, ICON, topbar, logos, burst } from './ui.js';
+import { userStats, readState, nextBadge } from './stats.js';
+import { vBoard, journeySegs, chapterQuiz, vExam, examBanner, ttsSetup, shareVerseImage } from './features.js';
+import { vAdmin } from './admin.js';
 
 // ---------- reading action ----------
 async function markRead(n, btn) {
@@ -64,7 +14,7 @@ async function markRead(n, btn) {
   try { await api.setRead(n, true); } catch (e) { console.error(e); toast('حصلت مشكلة في الحفظ… جرّب تاني'); return; }
   const after = new Set([...before, n]);
   const got = BADGES.filter((b) => !b.test(before) && b.test(after));
-  toast(n === dayToday()?.n ? 'شمعتك ولّعت 🕯️ ربنا يبارك قرايتك' : `تمام! اليوم ${ar(n)} اتسجل ✓`);
+  const dd = DAYS.find((x) => x.n === n); toast(n === dayToday()?.n ? 'شمعتك ولّعت 🕯️ ربنا يبارك قرايتك' : (dd && dd.date < todayCairo() ? `اليوم ${ar(n)} اتسجّل إنك قريته متأخر ✓` : `تمام! اليوم ${ar(n)} اتسجّل ✓`));
   if (got.length) setTimeout(() => badgeModal(got[0]), 900);
 }
 function dayToday() { const s = status(); return s.phase === 'reading' ? s.day : null; }
@@ -82,6 +32,10 @@ function candlesHTML(n) {
   return `<div class="candles">${list.map((u) => `<div class="cd ${(u.readDays || []).includes(n) ? 'on' : ''} ${u.phone === S.me.phone ? 'me' : ''}" title="${esc(u.name)}"><span class="fl"></span><span class="wick"></span><span class="wax"></span>${u.phone === S.me.phone ? '<span class="tip">أنا</span>' : ''}</div>`).join('')}</div>
   <p class="candlecount" style="margin-top:14px"><b>${ar(lit)}</b> من ${ar(list.length)} ولّعوا شمعتهم النهارده</p>`;
 }
+function nudgeHTML() {
+  const nb = nextBadge(myRead()); if (!nb) return '';
+  return `<a class="nudge" href="#/journey/mountain">✨ فاضلك ${ar(nb.left)} ${nb.left > 2 && nb.left < 11 ? 'أيام' : 'يوم'} على شارة «${nb.name}»</a>`;
+}
 function countdownHTML() {
   const t = todayCairo(); const d = diffDays(t, CHRISTMAS); if (d < 0) return '';
   const left = DAYS.filter((x) => x.date >= t).length;
@@ -90,7 +44,7 @@ function countdownHTML() {
 function missedHTML() {
   const r = myRead(); const t = todayCairo(); const miss = dueDays(t).filter((d) => d.date < t && !r.has(d.n));
   if (!miss.length) return '';
-  return `<section class="card"><div class="between"><h2>فاتك ${ar(miss.length)} ${miss.length > 10 || miss.length < 3 ? 'يوم' : 'أيام'}</h2><a class="chip" href="#/plan">الخطة كلها</a></div><p class="sub">ولا يهمك… كمّلهم براحتك، أي وقت.</p>
+  return `<section class="card"><div class="between"><h2>فاتك ${ar(miss.length)} ${miss.length > 10 || miss.length < 3 ? 'يوم' : 'أيام'}</h2><a class="chip" href="#/plan">الخطة كلها</a></div><p class="sub">ولا يهمك… تقدر تقراهم دلوقتي، وهيتسجلوا إنك قريتهم متأخر.</p>
   ${miss.slice(0, 3).map((d) => `<a class="pday missed" href="#/read/${d.n}" style="margin-top:10px"><span class="n">${ar(d.n)}</span><span class="t"><b>${otLabel(d)}${d.nt ? ' + ' + ntLabel(d) : ''}</b><small>${fmtDate(d.date)}</small></span></a>`).join('')}</section>`;
 }
 function reflHTML(n) {
@@ -106,7 +60,6 @@ function vToday() {
     hero = `<section class="card dayhero"><div class="between"><span class="eyebrow">قراءة النهارده</span><span class="num">اليوم <b>${ar(d.n)}</b> من ${ar(TOTAL)}</span></div>
       <div class="prog"><i style="width:${(r.size / TOTAL) * 100}%"></i></div><p style="font-size:13px;color:#e9d6a8">${fmtDate(d.date, true, true)}</p>
       <div class="chapters"><a class="chap" href="#/read/${d.n}"><small>العهد القديم</small><b>${otLabel(d)}</b></a>${d.nt ? `<a class="chap" href="#/read/${d.n}/${d.ot.length}"><small>العهد الجديد</small><b>${ntLabel(d)}</b></a>` : '<div class="chap" style="opacity:.6"><small>العهد الجديد</small><b>خلّصناه ✓</b></div>'}</div>
-      <div class="duty"><span class="dot" style="background:${d.servant.color}"></span>الخادم المسؤول النهارده: <b>${d.servant.name}</b></div>
       <div class="actions"><a class="btn light" href="#/read/${d.n}">اقرا دلوقتي</a><button class="btn ${done ? 'done' : 'red'} readbtn" id="readNow" ${done ? 'disabled style="opacity:1"' : ''}><span class="glow"></span>${done ? ICON.check + ' قريت النهارده' : 'قريت ✓'}</button></div></section>
       <section class="card"><div class="between"><h2>شمعدان النهارده</h2><span class="sub">كل واحد يقرا يولّع شمعة</span></div>${candlesHTML(d.n)}</section>
       ${reflHTML(d.n)}`;
@@ -120,28 +73,34 @@ function vToday() {
   } else {
     hero = `<section class="card dayhero" style="text-align:center"><span class="eyebrow">الرحلة خلصت</span><h2 style="font-size:28px;color:#fff;margin:6px 0">كل سنة وانت طيب ✨</h2><p style="color:#e9d6a8;line-height:1.8">قريت ${ar(r.size)} من ${ar(TOTAL)} يوم. «لأعرفه… وقوة قيامته»</p><a class="btn light" href="#/me" style="margin-top:14px">شوف شهادتك</a></section>`;
   }
-  APP.innerHTML = `<div class="view">${topbar()}<div class="stagger"><div class="hello"><h1>${greeting()} يا ${esc(name)} 👋</h1><p>${st.phase === 'reading' ? 'جاهز لخطوة النهارده على الجبل؟' : 'خليك قريب… الرحلة مستمرة.'}</p></div>${hero}${missedHTML()}${countdownHTML()}${logos()}</div></div>`;
+  APP.innerHTML = `<div class="view">${topbar()}<div class="stagger"><div class="hello"><h1>${greeting()} يا ${esc(name)} 👋</h1><p>${st.phase === 'reading' ? 'جاهز لخطوة النهارده على الجبل؟' : 'خليك قريب… الرحلة مستمرة.'}</p></div>${nudgeHTML()}<div id="exb"></div>${hero}${missedHTML()}${countdownHTML()}${logos()}</div></div>`;
   $('#readNow')?.addEventListener('click', (e) => markRead(st.day.n, e.currentTarget));
+  examBanner($('#exb'));
 }
 
 async function vRead(n, tab = 0) {
   const d = DAYS.find((x) => x.n === +n); if (!d) { location.hash = '#/today'; return; }
   const ps = passages(d); tab = Math.min(+tab || 0, ps.length - 1);
-  APP.innerHTML = `<div class="view reader"><div class="rhead"><a class="iconbtn" href="#/today" aria-label="رجوع">${ICON.back}</a><div class="tabs grow">${ps.map((p, i) => `<a class="tab ${i === tab ? 'on' : ''}" href="#/read/${d.n}/${i}">${BOOKS[p.book]} ${ar(p.ch)}</a>`).join('')}</div>
-    <button class="iconbtn" id="fsm" aria-label="تصغير الخط">${ICON.minus}</button><button class="iconbtn" id="fsp" aria-label="تكبير الخط">${ICON.plus}</button></div>
+  APP.innerHTML = `<div class="view reader"><div class="rhead"><a class="iconbtn" href="#/today" aria-label="رجوع">${ICON.back}</a><span class="sp"></span><div class="tabs grow">${ps.map((p, i) => `<a class="tab ${i === tab ? 'on' : ''}" href="#/read/${d.n}/${i}">${BOOKS[p.book]} ${ar(p.ch)}</a>`).join('')}</div>
+    <button class="iconbtn" id="tts" aria-label="اسمع الأصحاح">${ICON.ear}</button><button class="iconbtn" id="night" aria-label="وضع القراءة الليلي">${ICON.moon}</button><button class="iconbtn" id="fsm" aria-label="تصغير الخط">${ICON.minus}</button><button class="iconbtn" id="fsp" aria-label="تكبير الخط">${ICON.plus}</button></div>
     <div class="chapter" id="chap"><p class="muted" style="text-align:center;margin-top:40px">بيحمّل…</p></div></div>`;
   const T = await loadText(); const p = ps[tab]; const vs = T[p.book][p.ch];
   const chapEl = $('#chap'); if (!chapEl) return;
   chapEl.innerHTML = `<p class="eyebrow" style="text-align:center">اليوم ${ar(d.n)} — ${fmtDate(d.date)}</p><h2>${p.book === 'gen' ? 'سفر التكوين' : BOOKS[p.book]}</h2><div class="orn">الأصحاح ${ar(p.ch)}</div>
-    <div class="text" style="--fs:${S.fs}px">${vs.map((v, i) => `<span class="v" data-v="${i + 1}"><sup>${ar(i + 1)}</sup>${esc(v)}</span> `).join('')}</div>
+    <div class="text" style="--fs:${S.fs}px">${vs.map((v, i) => `<span class="v" data-v="${i + 1}" data-t="${esc(v)}"><sup>${ar(i + 1)}</sup>${esc(v)}</span> `).join('')}</div><div id="cquiz"></div>
     <div class="endread">${tab < ps.length - 1 ? `<a class="btn primary block" href="#/read/${d.n}/${tab + 1}">الأصحاح اللي بعده ←</a>` : (myRead().has(d.n) ? `<button class="btn done block" disabled style="opacity:1">${ICON.check} قريت اليوم ده</button>` : `<button class="btn red block readbtn" id="rdone"><span class="glow"></span>خلّصت… قريت ✓</button>`)}
     <p class="hint">دوس على أي آية عشان تختارها وتشاركها في «آيات لمستنا»</p></div>
-    <div class="selbar" id="selbar"><button class="btn light" id="share">✨ آية لمستني</button><button class="btn ghost" style="color:var(--cream);border-color:rgba(255,255,255,.3)" id="copy">نسخ</button></div>`;
+    <div class="selbar" id="selbar"><button class="btn light" id="share">✨ آية لمستني</button><button class="btn light" id="simg">🖼️ صورة</button><button class="btn ghost" style="color:var(--cream);border-color:rgba(255,255,255,.3)" id="copy">نسخ</button></div>`;
   const sel = new Set();
   const upd = () => $('#selbar').classList.toggle('show', sel.size > 0);
   $$('.v', chapEl).forEach((el) => el.addEventListener('click', () => { const k = +el.dataset.v; sel.has(k) ? sel.delete(k) : sel.add(k); el.classList.toggle('sel'); upd(); }));
   const selText = () => { const ks = [...sel].sort((a, b) => a - b); return { text: ks.map((k) => vs[k - 1]).join(' '), ref: `${p.book === 'gen' ? 'تكوين' : BOOKS[p.book]} ${ar(p.ch)}: ${ar(ks[0])}${ks.length > 1 ? '-' + ar(ks[ks.length - 1]) : ''}` }; };
   $('#share').onclick = async () => { const s = selText(); await api.post('verse', s.text, s.ref); toast('اتشاركت في «آيات لمستنا» ✨'); $$('.v.sel').forEach((x) => x.classList.replace('sel', 'mark')); sel.clear(); upd(); };
+  $('#simg').onclick = async () => { const s = selText(); await shareVerseImage(s.text, s.ref); };
+  ttsSetup($('#tts'), $$('.v', chapEl));
+  chapterQuiz($('#cquiz'), `${p.book}_${p.ch}`, `${p.book === 'gen' ? 'التكوين' : BOOKS[p.book]} ${ar(p.ch)}`);
+  const applyNight = () => document.body.classList.toggle('night', !!S.night); try { S.night = localStorage.getItem('la3rafo:night') === '1'; } catch (e) { /* ignore */ } applyNight();
+  $('#night').onclick = () => { S.night = !S.night; applyNight(); try { localStorage.setItem('la3rafo:night', S.night ? '1' : '0'); } catch (e) { /* ignore */ } };
   $('#copy').onclick = async () => { const s = selText(); try { await navigator.clipboard.writeText(`«${s.text}» (${s.ref})`); toast('اتنسخت'); } catch (e) { toast('مش قادر أنسخ هنا'); } };
   $('#rdone')?.addEventListener('click', async (e) => { await markRead(d.n, e.currentTarget); setTimeout(() => { location.hash = '#/today'; }, 1400); });
   const setFs = (v) => { S.fs = Math.max(16, Math.min(32, v)); $('.text').style.setProperty('--fs', S.fs + 'px'); try { localStorage.setItem('la3rafo:fs', S.fs); } catch (e) { /* ignore */ } };
@@ -149,12 +108,13 @@ async function vRead(n, tab = 0) {
   scrollTo(0, 0);
 }
 
-function vJourney() {
+function vJourney(sub) {
+  if (sub && sub !== 'mountain') { S.jTab = sub; if (vBoard(sub)) return; }
   const r = myRead(); const H = 1500; const Wd = 400;
   const pts = []; for (let i = 0; i <= 12; i++) { const y = H - 70 - i * ((H - 330) / 12); const x = i % 2 ? 300 - (i % 4 === 1 ? 10 : 0) : 100 + (i % 4 === 0 ? 0 : 15); pts.push([i === 12 ? 200 : x, y]); }
   pts[0] = [200, H - 40];
   let dpath = `M${pts[0][0]},${pts[0][1]}`; for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; const my = (y0 + y1) / 2; dpath += ` C${x0},${my} ${x1},${my} ${x1},${y1}`; }
-  APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>رحلتنا للقمة ⛰️</h1><p>كل يوم قراءة خطوة… والقمة عند الصليب يوم ${fmtDate(END, false)}</p></div>
+  APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>رحلتنا للقمة ⛰️</h1><p>كل يوم قراءة خطوة… والقمة عند الصليب يوم ${fmtDate(END, false)}</p></div>${journeySegs('mountain')}
   <div class="mtn" id="mtn"><svg viewBox="0 0 ${Wd} ${H}" id="msvg" role="img" aria-label="خريطة الرحلة">
     <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF6E0"/><stop offset=".5" stop-color="#FDF3D8"/><stop offset="1" stop-color="#F4E3BC"/></linearGradient>
     <linearGradient id="m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b4466"/><stop offset="1" stop-color="#02304A"/></linearGradient>
@@ -210,16 +170,16 @@ function vPlan() {
   let d = START; const end = END; const byDate = Object.fromEntries(DAYS.map((x) => [x.date, x]));
   while (d <= end) {
     const w = Math.floor(diffDays('2026-11-14', d) / 7);
-    if (w !== wk) { if (wk >= 0) html += '</div>'; wk = w; const s = addDays('2026-11-14', w * 7); html += `<div class="week"><h3>الأسبوع ${ar(w + 1)} · ${fmtDate(s, false)} – ${fmtDate(addDays(s, 6), false)}</h3>`; }
+    if (w !== wk) { if (wk >= 0) html += '</div>'; wk = w; const s = addDays('2026-11-14', w * 7); html += `<div class="week"><h3>الأسبوع ${ar(w + 1)}، من ${fmtDate(s, false)} لـ ${fmtDate(addDays(s, 6), false)}</h3>`; }
     const x = byDate[d];
     if (x) {
       const cls = r.has(x.n) ? 'done' : x.date === t ? 'today' : x.date < t ? 'missed' : 'future';
-      html += `<a class="pday ${cls}" href="#/read/${x.n}"><span class="n">${ar(x.n)}</span><span class="t"><b>${otLabel(x)}${x.nt ? ' + ' + ntLabel(x) : ''}</b><small>${fmtDate(x.date)} · ${x.servant.name}</small></span>${cls === 'done' ? `<span class="check">${ICON.check}</span>` : cls === 'missed' ? '<span class="st" style="color:var(--red)">كمّله</span>' : cls === 'today' ? '<span class="st" style="color:var(--red)">النهارده</span>' : ''}</a>`;
+      html += `<a class="pday ${cls}" href="#/read/${x.n}"><span class="n">${ar(x.n)}</span><span class="t"><b>${otLabel(x)}${x.nt ? ' + ' + ntLabel(x) : ''}</b><small>${fmtDate(x.date)}${r.has(x.n) && readState(meU(), x.n) === 'late' ? ' <i class="latepill">قريته متأخر</i>' : ''}</small></span>${cls === 'done' ? `<span class="check">${ICON.check}</span>` : cls === 'missed' ? '<span class="st" style="color:var(--red)">كمّله</span>' : cls === 'today' ? '<span class="st" style="color:var(--red)">النهارده</span>' : ''}</a>`;
     } else if (weekday(d) === 5 && d > START) html += `<div class="friday">الجمعة ${fmtDate(d, false)} — إجازة 🌿</div>`;
     d = addDays(d, 1);
   }
   html += '</div>';
-  APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>الخطة كلها</h1><p>${ar(TOTAL)} يوم · من ${fmtDate(START, false)} لحد ${fmtDate(END, false, true)} · الجمعة إجازة</p></div>
+  APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>الخطة كلها</h1><p>${ar(TOTAL)} يوم من ${fmtDate(START, false)} لحد ${fmtDate(END, false, true)}، والجمعة إجازة</p></div>
   <div class="card" style="padding:14px 16px"><div class="between"><span class="sub">قريت</span><b>${ar(r.size)} / ${ar(TOTAL)}</b></div><div class="prog" style="background:#f2e4c2"><i style="width:${(r.size / TOTAL) * 100}%"></i></div></div>${html}${logos()}</div>`;
   const tEl = $('.pday.today'); if (tEl) setTimeout(() => tEl.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' }), 300);
 }
@@ -242,15 +202,14 @@ function vWall() {
 }
 
 function vMe() {
-  const r = myRead(); const st = streak(r); const got = BADGES.filter((b) => b.test(r)); const pct = r.size / TOTAL; const C = 2 * Math.PI * 78;
+  const r = myRead(); const us = userStats(meU()); const st = streak(r); const got = BADGES.filter((b) => b.test(r)); const pct = r.size / TOTAL; const C = 2 * Math.PI * 78;
   APP.innerHTML = `<div class="view">${topbar()}<div class="stagger"><section class="card" style="text-align:center"><div class="row" style="justify-content:center">${avatar(S.me.name, 54)}<div style="text-align:right"><h2 style="margin:0">${esc(S.me.name)}</h2><span class="sub">في الرحلة من ${fmtDate(START, false)}</span></div></div>
     <div class="ring"><svg width="180" height="180"><circle cx="90" cy="90" r="78" fill="none" stroke="#f2e4c2" stroke-width="14"/><circle cx="90" cy="90" r="78" fill="none" stroke="url(#rg)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}" style="transition:stroke-dashoffset 1.4s var(--ease)"/><defs><linearGradient id="rg"><stop offset="0" stop-color="#C9A04E"/><stop offset="1" stop-color="#C22026"/></linearGradient></defs></svg>
     <div class="c"><div><b>${ar(Math.round(pct * 100))}٪</b><span>من الرحلة</span></div></div></div>
-    <div class="stats"><div class="stat"><b>${ar(r.size)}</b><span>يوم قريته</span></div><div class="stat"><b>${ar(st)}</b><span>أيام متتالية</span></div><div class="stat"><b>${ar(got.length)}</b><span>شارة</span></div></div></section>
+    <div class="stats"><div class="stat"><b>${ar(us.onTime)}</b><span>في معاده</span></div><div class="stat"><b>${ar(us.late)}</b><span>متأخر</span></div><div class="stat"><b>${ar(st)}</b><span>أيام متتالية</span></div><div class="stat"><b>${ar(got.length)}</b><span>شارة</span></div><div class="stat"><b>${us.qt ? ar(us.qc) + '<small>/' + ar(us.qt) + '</small>' : '—'}</b><span>أسئلة صح</span></div><div class="stat"><b>${ar(us.points)}</b><span>نقطة نور</span></div></div></section>
     <section class="card"><h2>شهادة إتمام الرحلة</h2><p class="sub">${r.size >= TOTAL ? 'مبروك! خلّصت الرحلة كلها 🎉' : `هتتفتح لما تخلّص الـ${ar(TOTAL)} يوم — فاضل ${ar(TOTAL - r.size)}`}</p><button class="btn ${r.size >= TOTAL ? 'red' : 'ghost'} block" id="cert" style="margin-top:12px">${r.size >= TOTAL ? 'حمّل شهادتك' : 'شوف شكل الشهادة'}</button></section>
     <section class="card"><h2>بياناتي</h2><div class="field" style="margin-top:10px"><input id="nm" value="${esc(S.me.name)}" placeholder=" " maxlength="40"><label for="nm">الاسم</label></div>
     <div class="actions" style="margin-top:4px"><button class="btn primary" id="save">حفظ الاسم</button><button class="btn ghost" id="out">خروج</button></div></section>
-    <a class="card between" href="#/servants" style="display:flex"><span><b>دخول الخدام</b><br><span class="sub">ماركو · بيتر · محب · بيشوي</span></span><span style="font-size:22px">🔑</span></a>
     ${logos()}</div></div>`;
   $('#cert').onclick = () => certModal(r.size >= TOTAL);
   $('#save').onclick = async () => { const n = $('#nm').value.trim(); if (n.length < 2) return toast('اكتب اسمك'); S.me = await api.login(n, S.me.phone); toast('اتحفظ ✓'); };
@@ -282,40 +241,6 @@ async function drawCert(cv, real) {
   if (!real) { c.save(); c.translate(W / 2, H / 2); c.rotate(-.35); c.fillStyle = 'rgba(194,32,38,.13)'; c.font = '700 150px Messiri'; c.fillText('معاينة', 0, 40); c.restore(); }
 }
 
-// ---------- servants ----------
-async function vServants() {
-  const ok = await api.isServant();
-  if (!ok) {
-    APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>دخول الخدام 🔑</h1><p>ماركو · بيتر · محب · بيشوي</p></div>
-    <section class="card"><div class="field"><input id="code" type="password" inputmode="numeric" placeholder=" " autocomplete="off"><label for="code">كود الخدام</label></div><button class="btn primary block" id="go">دخول</button>
-    ${mode === 'demo' ? '<p class="hint">في الوضع التجريبي الكود: 2026</p>' : ''}</section>
-    <details class="card"><summary style="font-weight:700;cursor:pointer">أول مرة؟ حدد كود الخدام</summary><p class="sub" style="margin:8px 0">الكود بيتحدد مرة واحدة بس، وبعدها كل خادم يدخل بيه.</p><div class="field"><input id="ncode" type="password" placeholder=" " minlength="4"><label for="ncode">كود جديد (٤ حروف أو أرقام على الأقل)</label></div><button class="btn ghost block" id="setc">حدد الكود</button></details></div>`;
-    $('#go').onclick = async () => { if (await api.unlock($('#code').value.trim())) { toast('أهلًا يا خادم 🙏'); vServants(); } else toast('الكود غلط'); };
-    $('#setc').onclick = async () => { const c = $('#ncode').value.trim(); if (c.length < 4) return toast('الكود قصير'); if (await api.setCode(c)) { toast('اتحدد الكود ✓'); vServants(); } else toast('الكود متحدد قبل كده — اسأل باقي الخدام'); };
-    return;
-  }
-  const st = status(); const sel = S.sDay || (st.phase === 'reading' ? st.day.n : (st.next?.n || 1)); const d = DAYS.find((x) => x.n === sel);
-  const readers = S.users.filter((u) => (u.readDays || []).includes(sel)); const not = S.users.filter((u) => !(u.readDays || []).includes(sel));
-  const url = location.href.split('#')[0];
-  const msg = (u) => encodeURIComponent(`سلام يا ${first(u.name)} 🌿\nلسه مستنيين شمعتك النهارده 🕯️\nقراءة اليوم ${ar(d.n)}: ${otLabel(d)}${d.nt ? ' + ' + ntLabel(d) : ''}\n${url}\n— لأعرفه`);
-  const wa = (p) => '2' + normPhone(p);
-  const counts = DAYS.map((x) => S.users.filter((u) => (u.readDays || []).includes(x.n)).length); const mx = Math.max(1, S.users.length);
-  const x = S.days[sel] || {};
-  APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>لوحة الخدام</h1><p>${ar(S.users.length)} مشترك في الرحلة</p></div>
-  <section class="card"><label class="sub" for="dsel">اختار اليوم</label><select id="dsel" style="margin-top:6px">${DAYS.map((y) => `<option value="${y.n}" ${y.n === sel ? 'selected' : ''}>اليوم ${ar(y.n)} — ${fmtDate(y.date)} — ${y.servant.name}</option>`).join('')}</select>
-    <div class="duty" style="color:var(--muted)"><span class="dot" style="background:${d.servant.color}"></span>المسؤول: <b style="color:var(--navy)">${d.servant.name}</b> · ${otLabel(d)}${d.nt ? ' + ' + ntLabel(d) : ''}</div></section>
-  <section class="card"><div class="between"><h2>مين قرا؟</h2><span class="chip">${ar(readers.length)} / ${ar(S.users.length)}</span></div>
-    ${not.map((u) => `<div class="member">${avatar(u.name, 34)}<span>${esc(u.name)}</span><a class="wa" target="_blank" rel="noopener" href="https://wa.me/${wa(u.phone)}?text=${msg(u)}">${ICON.wa} فكّره</a></div>`).join('')}
-    ${readers.map((u) => `<div class="member">${avatar(u.name, 34)}<span>${esc(u.name)}</span><span class="okk">قرا ✓</span></div>`).join('')}</section>
-  <section class="card"><h2>كلمة اليوم ${ar(sel)}</h2><p class="sub">بتظهر للكل في صفحة «النهارده»</p>
-    <textarea class="inp" id="refl" style="margin-top:10px" placeholder="تأمل قصير على قراءة اليوم…">${esc(x.reflection || '')}</textarea>
-    <input class="inp" id="ques" style="margin-top:8px" placeholder="سؤال للتأمل (اختياري)" value="${esc(x.question || '')}">
-    <button class="btn primary block" id="sv" style="margin-top:10px">حفظ</button></section>
-  <section class="card"><h2>القراءة يوم بيوم</h2><div class="bars">${counts.map((c, i) => `<i class="${DAYS[i].n === sel ? 't' : ''}" style="height:${(c / mx) * 100}%" title="اليوم ${i + 1}: ${c}"></i>`).join('')}</div></section></div>`;
-  $('#dsel').onchange = (e) => { S.sDay = +e.target.value; vServants(); };
-  $('#sv').onclick = async () => { await api.saveDay(sel, { reflection: $('#refl').value.trim(), question: $('#ques').value.trim(), by: d.servant.name }); toast('اتحفظت ✓'); };
-}
-
 // ---------- onboarding with the pop-up book ----------
 function vOnboard() {
   NAV.hidden = true; APP.classList.add('full');
@@ -345,7 +270,7 @@ function vOnboard() {
     if (n.length < 2) return ($('#oerr').textContent = 'اكتب اسمك');
     if (!validPhone(p)) return ($('#oerr').textContent = 'رقم الموبايل لازم يكون ١١ رقم ويبدأ بـ 01');
     $('#oerr').textContent = ''; $('#ogo').disabled = true; $('#ogo').textContent = 'لحظة…';
-    try { S.me = await api.login(n, p); const r = $('#ogo').getBoundingClientRect(); burst(r.left + r.width / 2, r.top, 140); setTimeout(() => { APP.classList.remove('full'); location.hash = '#/today'; route(); }, 700); }
+    try { S.me = await api.login(n, p); const r = $('#ogo').getBoundingClientRect(); burst(r.left + r.width / 2, r.top, 140); setTimeout(() => { APP.classList.remove('full'); if (!/^#\/(khadem|exam)/.test(location.hash)) location.hash = '#/today'; route(); }, 700); }
     catch (err) { console.error(err); $('#oerr').textContent = 'حصلت مشكلة في الاتصال… جرّب تاني'; $('#ogo').disabled = false; $('#ogo').textContent = 'يلا نبدأ الرحلة ⛰️'; }
   });
 }
@@ -380,14 +305,19 @@ function route() {
   if (!S.me) return vOnboard();
   NAV.hidden = false; APP.classList.remove('full');
   const [, r = 'today', a, b] = (location.hash || '#/today').split('/');
-  $$('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.r === r || (r === 'read' && x.dataset.r === 'today') || (r === 'servants' && x.dataset.r === 'me')));
-  const v = { today: vToday, read: () => vRead(a, b), journey: vJourney, plan: vPlan, wall: vWall, me: vMe, servants: vServants }[r] || vToday;
-  v(); if (r !== 'journey' && r !== 'plan' && r !== 'read') scrollTo(0, 0);
+  if (r === 'servants') { location.hash = '#/khadem'; return; }
+  try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } if (r !== 'read') document.body.classList.remove('night');
+  $$('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.r === r || (r === 'read' && x.dataset.r === 'today') || (r === 'exam' && x.dataset.r === 'journey')));
+  const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: vWall, me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a) }[r] || vToday;
+  const same = S.lastRoute === location.hash; S.lastRoute = location.hash;
+  v(); if (!same && r !== 'journey' && r !== 'plan' && r !== 'read') scrollTo(0, 0);
 }
-let rt; const rerender = (kinds) => () => { clearTimeout(rt); rt = setTimeout(() => { const r = (location.hash.split('/')[1] || 'today'); if (S.me && kinds.includes(r) && !document.activeElement?.matches('input,textarea,select')) route(); }, 120); };
-on('users', (u) => { S.users = u; if (S.me) { const m = u.find((x) => x.phone === S.me.phone); if (m) S.me = m; } rerender(['today', 'journey', 'plan', 'me', 'servants'])(); });
+let rt; const rerender = (kinds) => () => { clearTimeout(rt); rt = setTimeout(() => { const r = (location.hash.split('/')[1] || 'today'); const sub = location.hash.split('/')[2]; if (r === 'khadem' && ['quiz', 'exams', 'word'].includes(sub)) return; if (S.me && kinds.includes(r) && !document.activeElement?.matches('input,textarea,select')) route(); }, 120); };
+on('users', (u) => { S.users = u; if (S.me) { const m = u.find((x) => x.phone === S.me.phone); if (m) S.me = m; } rerender(['today', 'journey', 'plan', 'me', 'khadem'])(); });
 on('wall', (w) => { S.wall = w; rerender(['wall'])(); });
-on('days', (d) => { S.days = d; rerender(['today'])(); });
+on('days', (d) => { S.days = d; rerender(['today', 'khadem'])(); });
+on('chq', (d) => { S.chq = d; rerender(['khadem'])(); });
+on('exams', (d) => { S.exams = d; rerender(['today', 'journey', 'khadem'])(); });
 addEventListener('hashchange', route);
 
 (async () => {
