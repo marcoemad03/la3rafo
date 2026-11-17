@@ -435,3 +435,46 @@ body:not(.reading) .selbar{bottom:calc(var(--nav-h) + var(--safe-b) + 24px)}
 .lamp.lit .flame{opacity:1;animation:flick 1.7s ease-in-out infinite}
 .lamp .halo{opacity:0}.lamp.lit .halo{opacity:1}
 .selbar .btn{white-space:nowrap}
+
+/* ===== 3D emblem ===== */
+.stage3d{position:relative;width:min(80vw,340px);aspect-ratio:603/798;perspective:1100px;perspective-origin:50% 45%;margin-top:4px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.stage3d:active{cursor:grabbing}
+.cam3d{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+.L3{position:absolute;inset:0;transform-style:preserve-3d;opacity:0}
+.L3 img{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+.L3 img.ex{filter:brightness(.35) saturate(1.2)}
+#L_pl{transform-origin:50.8% 50%}#L_pr{transform-origin:50.8% 50%}
+#L_fl{transform-origin:53% 31%}
+#L_c0{transform-origin:71.4% 85.4%}#L_c1{transform-origin:76.8% 85.4%}#L_c2{transform-origin:82.6% 85.4%}
+.floor3d{position:absolute;left:8%;right:8%;bottom:-6%;height:34%;border-radius:50%;opacity:0;
+  background:radial-gradient(closest-side,rgba(2,48,74,.35),rgba(2,48,74,0));transform:translateZ(-30px) rotateX(88deg);transform-origin:50% 100%}
+.rays3d{position:absolute;left:52%;top:43%;width:250%;aspect-ratio:1;border-radius:50%;pointer-events:none;opacity:0;
+  background:repeating-conic-gradient(from 0deg,rgba(242,196,109,0) 0deg 5deg,rgba(242,196,109,.5) 7deg 9deg,rgba(242,196,109,0) 11deg 15deg);
+  -webkit-mask-image:radial-gradient(circle,#000 0%,rgba(0,0,0,.45) 22%,transparent 52%);mask-image:radial-gradient(circle,#000 0%,rgba(0,0,0,.45) 22%,transparent 52%)}
+.glow3d{position:absolute;left:52%;top:43%;width:120%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;opacity:0;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,232,180,.95),rgba(242,196,109,.35) 35%,rgba(242,196,109,0) 68%)}
+.hint3d{position:absolute;left:50%;top:-4px;transform:translate(-50%,8px);font-size:12.5px;font-weight:700;color:var(--brown);background:var(--paper);border:1px solid var(--line);padding:4px 12px;border-radius:99px;opacity:0;transition:all .6s var(--ease);white-space:nowrap;pointer-events:none}
+.hint3d.show{opacity:1;transform:translate(-50%,0)}.hint3d.gone{opacity:0!important}
+
+/* home additions */
+.week7 .wrow{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.wd span{font-size:10.5px;color:var(--muted);font-weight:700}
+.wd i{font-style:normal;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:#f4ecda;color:var(--brown)}
+.wd small{font-size:11px;color:var(--muted)}
+.wd.ok i{background:var(--navy);color:var(--gold2)}.wd.late i{background:var(--gold2);color:#3a2a0a}.wd.miss i{background:#fbe3e1;color:var(--red)}
+.wd.now{border-color:var(--red);box-shadow:0 0 0 3px rgba(194,32,38,.12)}.wd.now i{background:var(--red);color:#fff}
+.wd.fri{background:#f6efdc;border-style:dashed}.wd.fri i{background:transparent}.wd.off{opacity:.45}
+.vday{position:relative;background:linear-gradient(160deg,#fffaf0,#fbefd2);border-color:#ecd08f;padding-top:26px}
+.vday .vq{position:absolute;top:-14px;right:14px;font-family:Amiri;font-size:76px;color:rgba(201,160,78,.35);line-height:1}
+.vday .vt{font-family:Amiri;font-weight:700;font-size:21px;line-height:1.9;color:var(--ink)}
+.vday .vr{font-weight:700;color:var(--red);font-size:14px}
+.vday::before{content:"آية اليوم";position:absolute;top:10px;left:16px;font-size:11.5px;font-weight:700;color:var(--brown)}
+.lamppre,.qcta{display:flex!important;align-items:center;gap:12px}
+.lamppre small,.qcta small{display:block;font-size:12.5px;color:var(--muted);font-weight:500}
+.lamppre svg:last-child,.qcta svg:last-child{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;transform:scaleX(-1);flex:none}
+.qcta{border-color:#bfe0d2;background:linear-gradient(90deg,#eef8f3,#fff)}.qcta .ei{font-size:26px}
+.fam .famv{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.fam .famv b{font-size:14px}.fam .famv small{color:var(--red);font-weight:700;font-size:12px}
+.fam .famv em{display:block;font-style:normal;font-family:Amiri;font-size:16.5px;line-height:1.7;color:var(--ink);margin-top:2px}
+.famp{display:block;margin-top:10px;padding:10px 12px;border-radius:12px;background:#eef7f3;color:var(--ok);font-weight:700;font-size:14px}

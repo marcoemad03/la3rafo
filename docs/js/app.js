@@ -1,8 +1,8 @@
-import { DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
+import { KEY_VERSES, DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
 import { init, api, on, mode, normPhone, validPhone } from './data.js';
 import { $, $$, esc, APP, NAV, S, reduce, color, initial, first, avatar, timeAgo, toast, vibrate, myRead, meU, greeting, loadText, ICON, topbar, logos, burst } from './ui.js';
-import { userStats, readState, nextBadge } from './stats.js';
-import { vBoard, journeySegs, chapterQuiz, vExam, examBanner, ttsSetup, shareVerseImage } from './features.js';
+import { userStats, readState, nextBadge, weekRange } from './stats.js';
+import { lamp, vBoard, journeySegs, chapterQuiz, vExam, examBanner, ttsSetup, shareVerseImage } from './features.js';
 import { vAdmin } from './admin.js';
 
 // ---------- reading action ----------
@@ -31,6 +31,40 @@ function candlesHTML(n) {
   const lit = list.filter((u) => (u.readDays || []).includes(n)).length;
   return `<div class="candles">${list.map((u) => `<div class="cd ${(u.readDays || []).includes(n) ? 'on' : ''} ${u.phone === S.me.phone ? 'me' : ''}" title="${esc(u.name)}"><span class="fl"></span><span class="wick"></span><span class="wax"></span>${u.phone === S.me.phone ? '<span class="tip">أنا</span>' : ''}</div>`).join('')}</div>
   <p class="candlecount" style="margin-top:14px"><b>${ar(lit)}</b> من ${ar(list.length)} ولّعوا شمعتهم النهارده</p>`;
+}
+function weekHTML() {
+  const t = todayCairo(); const [s] = weekRange(t); const u = meU();
+  const cells = Array.from({ length: 7 }, (_, i) => { const dt = addDays(s, i); const d = DAYS.find((x) => x.date === dt);
+    let cls = 'fu', ic = ''; if (weekday(dt) === 5) { cls = 'fri'; ic = '🌿'; }
+    else if (d) { const st = readState(u, d.n); if (st === 'ontime') { cls = 'ok'; ic = '✓'; } else if (st === 'late') { cls = 'late'; ic = '⏰'; } else if (dt < t) { cls = 'miss'; ic = '!'; } else if (dt === t) { cls = 'now'; ic = '•'; } }
+    else cls = 'off';
+    return `<a class="wd ${cls}" ${d ? `href="#/read/${d.n}"` : ''}><span>${['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'][weekday(dt)]}</span><i>${ic}</i><small>${ar(+dt.slice(8))}</small></a>`; });
+  return `<section class="card week7"><div class="between"><h2>أسبوعك</h2><a class="chip" href="#/plan">الخطة</a></div><div class="wrow">${cells.join('')}</div></section>`;
+}
+function verseHTML(d) {
+  const k = KEY_VERSES[d.n]; if (!k || !S.text) return '<section class="card vday" id="vday"></section>';
+  const [b, c, v] = k; const txt = (S.text[b] && S.text[b][c] && S.text[b][c][v - 1]) || ''; if (!txt) return '';
+  const ref = `${b === 'gen' ? 'تكوين' : BOOKS[b]} ${ar(c)}: ${ar(v)}`;
+  return `<section class="card vday" id="vday"><span class="vq">«</span><p class="vt">${esc(txt)}</p><div class="between"><span class="vr">${ref}</span><button class="chip" id="vshare">🖼️ شاركها صورة</button></div></section>`;
+}
+function lampsHTML() {
+  const t = todayCairo(); const rows = S.users.map((u) => ({ u, s: userStats(u, t) })).sort((a, b) => b.s.onTime - a.s.onTime || b.s.read - a.s.read);
+  const i = rows.findIndex((r) => r.u.phone === S.me.phone); if (i < 0 || rows.length < 2) return '';
+  const me = rows[i];
+  return `<a class="card lamppre" href="#/journey/lamps">${lamp(me.s.consistency / 100, me.s.readToday, 38)}<span class="grow"><b>ترتيبك في لوحة الأمناء: ${ar(i + 1)} من ${ar(rows.length)}</b>
+    <small>الأوائل: ${rows.slice(0, 3).map((r) => esc(first(r.u.name))).join('، ')}</small></span>${ICON.back}</a>`;
+}
+function familyHTML() {
+  const vs = S.wall.filter((w) => w.type === 'verse').sort((a, b) => b.at - a.at).slice(0, 2); const pr = S.wall.filter((w) => w.type === 'prayer').length;
+  if (!vs.length && !pr) return '';
+  return `<section class="card fam"><div class="between"><h2>من الأسرة</h2><a class="chip" href="#/wall">الكل</a></div>
+    ${vs.map((w) => `<div class="famv">${avatar(w.name, 30)}<span class="grow"><b>${esc(first(w.name))}</b> لمسته آية${w.ref ? ` <small>${esc(w.ref)}</small>` : ''}<em>«${esc(w.text.length > 90 ? w.text.slice(0, 90) + '…' : w.text)}»</em></span></div>`).join('')}
+    ${pr ? `<a class="famp" href="#/wall">🙏 فيه ${ar(pr)} ${pr > 2 && pr < 11 ? 'طلبات' : 'طلب'} صلاة مستنيين صلاتك</a>` : ''}</section>`;
+}
+function quizCTA(d) {
+  const keys = passages(d).map((p) => `${p.book}_${p.ch}`).filter((k) => (S.chq[k]?.questions || []).length && !(meU().quiz || {})[k]);
+  if (!keys.length) return '';
+  return `<a class="card qcta" href="#/read/${d.n}"><span class="ei">💡</span><span class="grow"><b>فيه أسئلة على قراءة النهارده</b><small>اقرا وبعدين «اختبر نفسك» تحت الأصحاح</small></span>${ICON.back}</a>`;
 }
 function nudgeHTML() {
   const nb = nextBadge(myRead()); if (!nb) return '';
@@ -62,7 +96,7 @@ function vToday() {
       <div class="chapters"><a class="chap" href="#/read/${d.n}"><small>العهد القديم</small><b>${otLabel(d)}</b></a>${d.nt ? `<a class="chap" href="#/read/${d.n}/${d.ot.length}"><small>العهد الجديد</small><b>${ntLabel(d)}</b></a>` : '<div class="chap" style="opacity:.6"><small>العهد الجديد</small><b>خلّصناه ✓</b></div>'}</div>
       <div class="actions"><a class="btn light" href="#/read/${d.n}">اقرا دلوقتي</a><button class="btn ${done ? 'done' : 'red'} readbtn" id="readNow" ${done ? 'disabled style="opacity:1"' : ''}><span class="glow"></span>${done ? ICON.check + ' قريت النهارده' : 'قريت ✓'}</button></div></section>
       <section class="card"><div class="between"><h2>شمعدان النهارده</h2><span class="sub">كل واحد يقرا يولّع شمعة</span></div>${candlesHTML(d.n)}</section>
-      ${reflHTML(d.n)}`;
+      ${weekHTML()}${quizCTA(d)}${reflHTML(d.n)}${verseHTML(d)}`;
   } else if (st.phase === 'friday') {
     const nx = st.next;
     hero = `<section class="card dayhero"><span class="eyebrow">النهارده الجمعة</span><h2 style="font-size:28px;margin:6px 0 4px;color:#fff">إجازة 🌿</h2>
@@ -73,9 +107,13 @@ function vToday() {
   } else {
     hero = `<section class="card dayhero" style="text-align:center"><span class="eyebrow">الرحلة خلصت</span><h2 style="font-size:28px;color:#fff;margin:6px 0">كل سنة وانت طيب ✨</h2><p style="color:#e9d6a8;line-height:1.8">قريت ${ar(r.size)} من ${ar(TOTAL)} يوم. «لأعرفه… وقوة قيامته»</p><a class="btn light" href="#/me" style="margin-top:14px">شوف شهادتك</a></section>`;
   }
-  APP.innerHTML = `<div class="view">${topbar()}<div class="stagger"><div class="hello"><h1>${greeting()} يا ${esc(name)} 👋</h1><p>${st.phase === 'reading' ? 'جاهز لخطوة النهارده على الجبل؟' : 'خليك قريب… الرحلة مستمرة.'}</p></div>${nudgeHTML()}<div id="exb"></div>${hero}${missedHTML()}${countdownHTML()}${logos()}</div></div>`;
+  APP.innerHTML = `<div class="view">${topbar()}<div class="stagger"><div class="hello"><h1>${greeting()} يا ${esc(name)} 👋</h1><p>${st.phase === 'reading' ? 'جاهز لخطوة النهارده على الجبل؟' : 'خليك قريب… الرحلة مستمرة.'}</p></div>${nudgeHTML()}<div id="exb"></div>${hero}${st.phase !== 'reading' ? weekHTML() : ''}${lampsHTML()}${familyHTML()}${missedHTML()}${countdownHTML()}${logos()}</div></div>`;
   $('#readNow')?.addEventListener('click', (e) => markRead(st.day.n, e.currentTarget));
   examBanner($('#exb'));
+  if (st.phase === 'reading') {
+    const hook = () => { const k = KEY_VERSES[st.day.n]; $('#vshare')?.addEventListener('click', () => { const [b, c, v] = k; shareVerseImage(S.text[b][c][v - 1], `${b === 'gen' ? 'تكوين' : BOOKS[b]} ${ar(c)}: ${ar(v)}`); }); };
+    if (S.text) hook(); else loadText().then(() => { const el = $('#vday'); if (el) { el.outerHTML = verseHTML(st.day); hook(); } });
+  }
 }
 
 async function vRead(n, tab = 0) {
@@ -244,15 +282,7 @@ async function drawCert(cv, real) {
 // ---------- onboarding with the pop-up book ----------
 function vOnboard() {
   NAV.hidden = true; APP.classList.add('full');
-  APP.innerHTML = `<div class="onb view"><div class="stage3d"><div class="sunrays" id="rays"></div><div class="emb" id="emb">
-    <div class="w" id="wPL" style="transform-origin:50.8% 74.6%"><div class="w" id="iPL" style="transform-origin:50.8% 44%"><img src="assets/img/l_pageL.png" alt=""></div></div>
-    <div class="w" id="wPR" style="transform-origin:50.8% 74.6%"><div class="w" id="iPR" style="transform-origin:50.8% 44%"><img src="assets/img/l_pageR.png" alt=""></div></div>
-    <div class="w" id="wFL" style="transform-origin:50.8% 74.6%"><div class="w" id="iFL" style="transform-origin:53.1% 31.2%"><img src="assets/img/l_flame.png" alt=""></div></div>
-    <div class="w" id="wSU" style="transform-origin:50.8% 74.6%"><img src="assets/img/l_sun.png" alt=""></div>
-    <div class="w" id="wBK" style="transform-origin:50.8% 74.6%"><img src="assets/img/l_back.png" alt=""></div>
-    <div class="w" id="wFR" style="transform-origin:50.8% 98.2%"><img src="assets/img/l_front.png" alt="">
-      <img id="tabs" src="assets/img/l_tablets.png" alt="" style="transform-origin:26.2% 83.9%"><img id="cr0" src="assets/img/l_cross0.png" alt="" style="transform-origin:71.4% 85.4%"><img id="cr1" src="assets/img/l_cross1.png" alt="" style="transform-origin:76.8% 85.4%"><img id="cr2" src="assets/img/l_cross2.png" alt="" style="transform-origin:82.6% 85.4%"></div>
-    </div></div>
+  APP.innerHTML = `<div class="onb view">${emblem3D()}
     <img class="nm" id="onm" src="assets/img/name.png" alt="لأعرفه">
     <p class="tag" id="otag">رحلة قراءة الكتاب المقدس · من التكوين للرؤيا</p>
     <p class="verse" id="over">«لأَعْرِفَهُ، وَقُوَّةَ قِيَامَتِهِ، وَشَرِكَةَ آلاَمِهِ…»<small>فيلبي ٣: ١٠</small></p>
@@ -264,7 +294,7 @@ function vOnboard() {
       <p class="hint">رقمك بيخليك تدخل من أي موبايل، والخدام يقدروا يفكّروك بالقراية.<br>${mode === 'demo' ? '<b>وضع تجريبي:</b> البيانات على جهازك بس لحد ما يتربط Firebase.' : ''}</p>
     </form>
     ${logos()}</div>`;
-  popup();
+  intro3D();
   $('#oform').addEventListener('submit', async (e) => {
     e.preventDefault(); const n = $('#iname').value.trim(); const p = normPhone($('#iphone').value);
     if (n.length < 2) return ($('#oerr').textContent = 'اكتب اسمك');
@@ -274,28 +304,67 @@ function vOnboard() {
     catch (err) { console.error(err); $('#oerr').textContent = 'حصلت مشكلة في الاتصال… جرّب تاني'; $('#ogo').disabled = false; $('#ogo').textContent = 'يلا نبدأ الرحلة ⛰️'; }
   });
 }
-function popup() {
+// ---------- 3D emblem: real depth layers + thickness, camera fly-in, then drag to rotate ----------
+const LAYERS = [
+  ['pageL', -54, 'pl'], ['pageR', -54, 'pr'], ['flame', -44, 'fl'], ['sun', -32, 'su'], ['back', -16, 'bk'], ['front', 0, 'fr'],
+  ['tablets', 16, 'tb'], ['cross0', 16, 'c0'], ['cross2', 16, 'c2'], ['cross1', 16, 'c1'],
+];
+const PERSP = 1100;
+function emblem3D() {
+  const slice = (n, k) => `<img class="ex" src="assets/img/l_${n}.png" alt="" style="transform:translateZ(${-k * 1.7}px)">`;
+  return `<div class="stage3d" id="st"><div class="glow3d" id="glow"></div><div class="rays3d" id="rays"></div>
+    <div class="cam3d" id="cam"><div class="floor3d" id="floor"></div>${LAYERS.map(([n, z, id]) => `<div class="L3" id="L_${id}" data-z="${z}">
+      ${['tablets', 'cross0', 'cross1', 'cross2'].includes(n) ? '' : [4, 3, 2, 1].map((k) => slice(n, k)).join('')}<img class="face" src="assets/img/l_${n}.png" alt=""></div>`).join('')}</div>
+    <p class="hint3d" id="h3d">حرّكه بصباعك 👆</p></div>`;
+}
+function intro3D() {
   const cl = (x) => Math.min(1, Math.max(0, x)); const P = (t, a, b) => cl((t - a) / (b - a));
   const eo = (x) => 1 - Math.pow(1 - x, 3); const eio = (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-  const bk = (x, c = 1.7) => (x <= 0 ? 0 : 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2));
-  const E = (id) => document.getElementById(id); const t0 = performance.now();
+  const bk = (x, c = 1.6) => (x <= 0 ? 0 : 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2));
+  const E = (id) => document.getElementById(id); const cam = E('cam'); if (!cam) return;
+  const L = Object.fromEntries(LAYERS.map(([, z, id]) => [id, { el: E('L_' + id), z }]));
+  const comp = (z) => (PERSP - z) / PERSP; // keeps every layer pixel-aligned when seen from the front
+  // drag / tilt
+  let dx = 0, dy = 0, vx = 0, vy = 0, drag = null, touched = false;
+  const st = E('st');
+  st.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, dx, dy }; touched = true; st.setPointerCapture?.(e.pointerId); E('h3d')?.classList.add('gone'); });
+  st.addEventListener('pointermove', (e) => { if (!drag) return; const nx = drag.dx + (e.clientX - drag.x) * .35, ny = drag.dy - (e.clientY - drag.y) * .25; vx = nx - dx; vy = ny - dy; dx = nx; dy = ny; });
+  const up = () => { drag = null; }; st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+  addEventListener('deviceorientation', (e) => { if (drag || e.gamma == null) return; dx += ((Math.max(-25, Math.min(25, e.gamma)) * .9) - dx) * .08; dy += ((Math.max(-20, Math.min(20, (e.beta || 45) - 45)) * -.6) - dy) * .08; }, { passive: true });
+  const t0 = performance.now();
   const frame = (now) => {
-    const t = reduce ? 9 : (now - t0) / 1000; if (!E('emb')) return;
-    const TILT = 40 * (1 - eio(P(t, 3.6, 4.8)));
-    E('emb').style.transform = `rotateX(${TILT}deg) scale(${.92 + .08 * eo(P(t, 0, 4.8))})`; E('emb').style.transformOrigin = '50% 69%';
-    const pa = 88 * (1 - bk(eio(P(t, .1, 1.5)), 1));
-    ['wPL', 'wPR'].forEach((k) => { E(k).style.transform = `rotateX(${-TILT}deg)`; E(k).style.opacity = P(t, 0, .25); });
-    E('iPL').style.transform = `rotateY(${-pa}deg)`; E('iPR').style.transform = `rotateY(${pa}deg)`;
-    const pop = (a, b) => { const k = P(t, a, b); return { ang: -TILT * Math.min(1.15, bk(k, 2.2)), op: P(k, 0, .15) }; };
-    let p = pop(1.1, 1.9); E('wBK').style.transform = `translateZ(.2px) rotateX(${p.ang}deg)`; E('wBK').style.opacity = p.op;
-    p = pop(1.5, 2.3); E('wFR').style.transform = `translateZ(.4px) rotateX(${p.ang}deg)`; E('wFR').style.opacity = p.op;
-    const ks = P(t, 1.9, 2.9); E('wSU').style.transform = `translateZ(.1px) rotateX(${-TILT}deg) translateY(${(1 - Math.pow(1 - ks, 5)) * -0 + (1 - eo(ks)) * 26}%)`; E('wSU').style.opacity = P(ks, 0, .1);
-    const kt = P(t, 2.5, 3.1); E('tabs').style.transform = `translateZ(.3px) scale(${bk(kt, 2.4)})`; E('tabs').style.opacity = P(kt, 0, .1);
-    [[0, 2.8], [2, 2.95], [1, 3.1]].forEach(([i, a]) => { const k = P(t, a, a + .5); const e = E('cr' + i); e.style.transform = `translateZ(.3px) scaleY(${bk(k, 2.2)})`; e.style.opacity = P(k, 0, .1); });
-    const kf = P(t, 3.1, 3.9); E('wFL').style.transform = `translateZ(.05px) rotateX(${-TILT}deg)`; E('iFL').style.transform = `scaleY(${bk(kf, 2.6)}) skewX(${Math.sin(t * 14) * 3 * (1 - kf) * kf * 4}deg)`; E('wFL').style.opacity = P(kf, 0, .12);
-    E('rays').style.opacity = .85 * eo(P(t, 2.6, 3.6)); E('rays').style.transform = `translate(-50%,-50%) rotate(${t * 6}deg) scale(${.4 + .6 * eo(P(t, 2.6, 3.8))})`;
-    if (t > 4.0) { E('onm')?.classList.add('in'); E('otag')?.classList.add('in2'); E('over')?.classList.add('in2'); E('oform')?.classList.add('in'); }
-    if (t < 30 && E('emb')) requestAnimationFrame(frame);
+    if (!document.getElementById('cam')) return;
+    const t = reduce ? 9 : (now - t0) / 1000;
+    // camera: starts low and to the side, orbits while the book builds, settles facing us
+    const settle = eio(P(t, 2.9, 4.3));
+    let ry = -42 + 22 * eo(P(t, 0, 2.9)); ry = ry * (1 - settle) + (settle >= 1 ? 0 : 0);
+    let rx = 30 - 10 * eo(P(t, 0, 2.9)); rx = rx * (1 - settle);
+    const idle = P(t, 4.3, 5.3);
+    if (!drag) { dx *= .94; dy *= .94; if (Math.abs(vx) > .05) { dx += vx; vx *= .9; } if (Math.abs(vy) > .05) { dy += vy; vy *= .9; } }
+    const sway = touched ? 0 : 1;
+    ry += idle * (sway * 9 * Math.sin((t - 4.3) * .55) + dx); rx += idle * (sway * 4 * Math.sin((t - 4.3) * .4) + dy);
+    rx = Math.max(-35, Math.min(35, rx)); ry = Math.max(-60, Math.min(60, ry));
+    cam.style.transform = `translateZ(-40px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${.86 + .14 * eo(P(t, 0, 4.3))})`;
+    // pages open like a book from the spine
+    const po = bk(eio(P(t, .15, 1.5)), .9); const pa = 92 * (1 - po);
+    const put = (id, extra, op) => { const o = L[id]; o.el.style.transform = `translateZ(${o.z}px) scale(${comp(o.z)}) ${extra || ''}`; o.el.style.opacity = op; };
+    put('pl', `rotateY(${-pa}deg)`, P(t, 0, .3)); put('pr', `rotateY(${pa}deg)`, P(t, 0, .3));
+    // mountains rise out of the book
+    const kb = P(t, .9, 1.8), kf = P(t, 1.25, 2.15);
+    put('bk', `translateY(${(1 - bk(kb, 1.4)) * 38}%)`, P(kb, 0, .25)); put('fr', `translateY(${(1 - bk(kf, 1.4)) * 42}%)`, P(kf, 0, .25));
+    // sun climbs over the peak, rays open
+    const ks = P(t, 1.7, 2.8); put('su', `translateY(${(1 - eo(ks)) * 34}%)`, P(ks, 0, .15));
+    // tablets and crosses come forward toward us
+    const kt = P(t, 2.2, 2.9); put('tb', `translateZ(${(1 - bk(kt, 2)) * 140}px)`, P(kt, 0, .2));
+    [['c0', 2.45], ['c2', 2.6], ['c1', 2.75]].forEach(([id, a]) => { const k = P(t, a, a + .55); put(id, `translateY(${(1 - bk(k, 2)) * 12}%) scaleY(${.3 + .7 * eo(k)})`, P(k, 0, .2)); });
+    // the flame flares
+    const kfl = P(t, 2.8, 3.6); put('fl', `scaleY(${bk(kfl, 2.4)})`, P(kfl, 0, .15));
+    E('rays').style.opacity = .9 * eo(P(t, 2.2, 3.4)); E('rays').style.transform = `translate(-50%,-50%) translateZ(-90px) rotate(${t * 7}deg) scale(${.35 + .65 * eo(P(t, 2.2, 3.6))})`;
+    E('glow').style.opacity = eo(P(t, 2, 3.4));
+    E('floor').style.opacity = .9 * P(t, .3, 1.2);
+    if (t > 3.9) { E('onm')?.classList.add('in'); E('otag')?.classList.add('in2'); E('over')?.classList.add('in2'); E('oform')?.classList.add('in'); }
+    if (t > 5.5 && !touched) E('h3d')?.classList.add('show');
+    requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
 }
