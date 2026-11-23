@@ -1,6 +1,7 @@
 import { KEY_VERSES, DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
 import { init, api, on, mode, normPhone, validPhone, initialOf } from './data.js';
 import { versePicker, askModal, myQuestionsHTML } from './extras.js';
+import { vGame, gameCTA } from './game.js';
 import { $, $$, esc, APP, NAV, S, reduce, color, initial, first, avatar, timeAgo, toast, vibrate, myRead, meU, greeting, loadText, ICON, topbar, logos, burst } from './ui.js';
 import { userStats, readState, nextBadge, weekRange } from './stats.js';
 import { lamp, vBoard, journeySegs, chapterQuiz, vExam, examBanner, ttsSetup, shareVerseImage } from './features.js';
@@ -96,7 +97,7 @@ function vToday() {
       <div class="prog"><i style="width:${(r.size / TOTAL) * 100}%"></i></div><p style="font-size:13px;color:#e9d6a8">${fmtDate(d.date, true, true)}</p>
       <div class="chapters"><a class="chap" href="#/read/${d.n}"><small>العهد القديم</small><b>${otLabel(d)}</b></a>${d.nt ? `<a class="chap" href="#/read/${d.n}/${d.ot.length}"><small>العهد الجديد</small><b>${ntLabel(d)}</b></a>` : '<div class="chap" style="opacity:.6"><small>العهد الجديد</small><b>خلّصناه ✓</b></div>'}</div>
       <div class="actions"><a class="btn light" href="#/read/${d.n}">اقرا دلوقتي</a><button class="btn ${done ? 'done' : 'red'} readbtn" id="readNow" ${done ? 'disabled style="opacity:1"' : ''}><span class="glow"></span>${done ? ICON.check + ' قريت النهارده' : 'قريت ✓'}</button></div></section>
-      <section class="card"><div class="between"><h2>شمعدان النهارده</h2><span class="sub">كل واحد يقرا يولّع شمعة</span></div>${candlesHTML(d.n)}</section>
+      ${gameCTA(d.n)}<section class="card"><div class="between"><h2>شمعدان النهارده</h2><span class="sub">كل واحد يقرا يولّع شمعة</span></div>${candlesHTML(d.n)}</section>
       ${weekHTML()}${quizCTA(d)}${reflHTML(d.n)}${verseHTML(d)}`;
   } else if (st.phase === 'friday') {
     const nx = st.next;
@@ -399,16 +400,16 @@ function route() {
   $$('body > .selbar').forEach((x) => x.remove());
   if (!S.me) return vOnboard();
   APP.classList.remove('full');
-  { const rr = (location.hash || '#/today').split('/')[1]; NAV.hidden = rr === 'read' || rr === 'exam'; document.body.classList.toggle('reading', rr === 'read'); }
+  { const rr = (location.hash || '#/today').split('/')[1]; NAV.hidden = rr === 'read' || rr === 'exam' || rr === 'game'; document.body.classList.toggle('reading', rr === 'read'); }
   const [, r = 'today', a, b] = (location.hash || '#/today').split('/');
   if (r === 'servants') { location.hash = '#/khadem'; return; }
   try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } if (r !== 'read') document.body.classList.remove('night');
   $$('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.r === r || (r === 'read' && x.dataset.r === 'today') || (r === 'exam' && x.dataset.r === 'journey')));
-  const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: () => vWall(a), me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a) }[r] || vToday;
+  const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: () => vWall(a), me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a), game: () => vGame(a) }[r] || vToday;
   const same = S.lastRoute === location.hash; S.lastRoute = location.hash;
   v(); if (!same && r !== 'journey' && r !== 'plan' && r !== 'read') scrollTo(0, 0);
 }
-let rt; const pendK = new Set(); const rerender = (kinds) => () => { kinds.forEach((k) => pendK.add(k)); clearTimeout(rt); rt = setTimeout(() => { const ks = new Set(pendK); pendK.clear(); const r = (location.hash.split('/')[1] || 'today'); const sub = location.hash.split('/')[2]; if (r === 'khadem' && ['quiz', 'exams', 'word', 'asks', 'reports'].includes(sub)) return; if (S.me && ks.has(r) && !document.activeElement?.matches('input,textarea,select')) route(); }, 120); };
+let rt; const pendK = new Set(); const rerender = (kinds) => () => { kinds.forEach((k) => pendK.add(k)); clearTimeout(rt); rt = setTimeout(() => { const ks = new Set(pendK); pendK.clear(); const r = (location.hash.split('/')[1] || 'today'); const sub = location.hash.split('/')[2]; if (r === 'khadem' && ['quiz', 'exams', 'word', 'asks', 'reports', 'game'].includes(sub)) return; if (S.me && ks.has(r) && !document.activeElement?.matches('input,textarea,select')) route(); }, 120); };
 on('users', (u) => { S.users = u; if (S.me) { const m = u.find((x) => x.phone === S.me.phone); if (m) S.me = m; } rerender(['today', 'journey', 'plan', 'me', 'khadem'])(); });
 on('wall', (w) => { S.wall = w; rerender(['wall'])(); });
 on('myq', (q) => { S.myq = q; rerender(['wall'])(); });

@@ -16,7 +16,7 @@ export function userStats(u, today = todayCairo()) {
   let onTime = 0, late = 0;
   read.forEach((n) => { const s = readState(u, n); if (s === 'ontime') onTime++; else if (s === 'late') late++; });
   const dueN = due.length || 1;
-  const quiz = Object.values(u.quiz || {}); const qc = quiz.reduce((a, x) => a + (x.c || 0), 0); const qt = quiz.reduce((a, x) => a + (x.t || 0), 0);
+  const quiz = Object.entries(u.quiz || {}).filter(([k]) => !k.startsWith('game_')).map(([, v]) => v); const qc = quiz.reduce((a, x) => a + (x.c || 0), 0); const qt = quiz.reduce((a, x) => a + (x.t || 0), 0);
   const st = streak(read, today);
   const points = onTime * 10 + late * 5 + qc * 3 + st * 2;
   const lastAt = Math.max(0, ...Object.values(u.readAt || {}));

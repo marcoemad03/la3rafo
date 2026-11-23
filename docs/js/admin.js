@@ -4,11 +4,12 @@ import { api, mode, normPhone, buildResults, scoreSub, gradeOne, QTYPES, qPts, q
 import { $, $$, esc, APP, S, first, avatar, toast, topbar, burst, ICON } from './ui.js';
 import { userStats, readState, cairoDate } from './stats.js';
 import { reportsTab } from './reports.js';
+import { gameFor, gameDay, players, GAMES } from './game.js';
 import { timeAgo } from './ui.js';
 
 const CH = [['gen', 50], ['jas', 5], ['1pe', 5], ['2pe', 3], ['1jn', 5], ['2jn', 1], ['3jn', 1], ['jud', 1], ['rev', 22]]
   .flatMap(([b, n]) => Array.from({ length: n }, (_, i) => ({ key: `${b}_${i + 1}`, label: `${BOOKS[b]} ${ar(i + 1)}` })));
-const TABS = [['home', 'نظرة عامة'], ['day', 'يوم بيوم'], ['people', 'المشتركين'], ['asks', 'أسئلة المخدومين'], ['reports', 'التقارير'], ['quiz', 'أسئلة الأصحاحات'], ['exams', 'الامتحانات'], ['word', 'كلمة اليوم']];
+const TABS = [['home', 'نظرة عامة'], ['day', 'يوم بيوم'], ['people', 'المشتركين'], ['asks', 'أسئلة المخدومين'], ['reports', 'التقارير'], ['game', 'لعبة اليوم'], ['quiz', 'أسئلة الأصحاحات'], ['exams', 'الامتحانات'], ['word', 'كلمة اليوم']];
 const wa = (p) => '2' + normPhone(p);
 const siteUrl = () => location.href.split('#')[0].replace(/khadem\/?$/, '');
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
@@ -18,7 +19,7 @@ export async function vAdmin(tab = 'home', arg) {
   const T = TABS.find((x) => x[0] === tab) ? tab : 'home';
   const nav = `<div class="atabs">${TABS.map(([k, l]) => `<a href="#/khadem/${k}" class="${k === T ? 'on' : ''}">${l}</a>`).join('')}</div>`;
   APP.innerHTML = `<div class="view admin">${topbar()}<div class="hello"><h1>لوحة الخدام</h1><p>${ar(S.users.length)} مشترك في الرحلة</p></div>${nav}<div id="ab"></div></div>`;
-  ({ home, day: dayTab, people, asks: asksTab, reports: reportsTab, quiz: quizTab, exams: examsTab, word }[T])($('#ab'), arg);
+  ({ home, day: dayTab, people, asks: asksTab, reports: reportsTab, game: gameTab, quiz: quizTab, exams: examsTab, word }[T])($('#ab'), arg);
   $('.atabs a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 
@@ -201,17 +202,20 @@ async function examsTab(el, arg) {
 }
 const needsGrading = (e) => (e.questions || []).some((q) => ['essay', 'fill'].includes(qType(q)));
 const TYPE_HINT = { mcq: 'علّم الدايرة جنب الإجابة الصح', tf: 'اختار الإجابة الصح', fill: 'حط «……» مكان الكلمة الناقصة في السؤال', essay: 'المخدوم بيكتب إجابته، وإنت بتصححها بإيدك' };
-function examBuilder(host, qs) {
+function examBuilder(host, qs, opts = {}) {
+  const TY = Object.entries(QTYPES).filter(([k]) => !opts.types || opts.types.includes(k));
   const draw = () => {
     host.innerHTML = qs.map((q, i) => `<div class="qed" data-i="${i}"><div class="between"><b>سؤال ${ar(i + 1)}</b><span class="row" style="gap:6px"><label class="pts">الدرجة <input type="number" min="1" max="20" data-f="pts" value="${q.pts || 1}"></label><button class="chip" data-del="${i}">حذف</button></span></div>
-      <div class="qtypes">${Object.entries(QTYPES).map(([k, l]) => `<button type="button" class="${q.type === k ? 'on' : ''}" data-ty="${k}">${l}</button>`).join('')}</div>
+      ${opts.game ? `<input class="inp" data-f="title" value="${esc(q.title || '')}" placeholder="عنوان المحطة (اختياري)، مثلًا: فين؟" style="margin-top:8px">` : ''}
+      <div class="qtypes">${TY.map(([k, l]) => `<button type="button" class="${q.type === k ? 'on' : ''}" data-ty="${k}">${l}</button>`).join('')}</div>
       <textarea class="inp" data-f="q" rows="2" placeholder="${q.type === 'fill' ? 'مثلًا: في البدء خلق الله …… والأرض' : 'السؤال'}">${esc(q.q)}</textarea>
       ${q.type === 'mcq' ? [0, 1, 2, 3].map((k) => `<label class="optin"><input type="radio" name="a${i}" value="${k}" ${q.answer === k ? 'checked' : ''} aria-label="الإجابة الصح"><input class="inp" data-o="${k}" value="${esc(q.options[k] || '')}" placeholder="اختيار ${'أبجد'[k]}${k > 1 ? ' (اختياري)' : ''}"></label>`).join('') : ''}
       ${q.type === 'tf' ? `<div class="tfpick"><label><input type="radio" name="tf${i}" value="1" ${q.tf !== false ? 'checked' : ''}> ✓ صح</label><label><input type="radio" name="tf${i}" value="0" ${q.tf === false ? 'checked' : ''}> ✗ خطأ</label></div>` : ''}
       ${q.type === 'fill' ? `<input class="inp" data-f="fill" value="${esc(q.fill || '')}" placeholder="الإجابة الصح. لو فيه أكتر من إجابة مقبولة افصل بينهم بـ /">` : ''}
       ${q.type === 'essay' ? `<textarea class="inp" data-f="model" rows="2" placeholder="إجابة نموذجية (اختياري، بتظهرلك إنت بس وقت التصحيح)">${esc(q.model || '')}</textarea>` : ''}
+      ${opts.game ? `<input class="inp" data-f="explain" value="${esc(q.explain || '')}" placeholder="الشاهد أو التوضيح، بيظهر بعد الإجابة (اختياري)">` : ''}
       <p class="hint">${TYPE_HINT[q.type]}</p></div>`).join('')
-      + `<div class="qadd">${Object.entries(QTYPES).map(([k, l]) => `<button class="btn ghost" data-add="${k}">＋ ${l}</button>`).join('')}</div>`;
+      + `<div class="qadd">${TY.map(([k, l]) => `<button class="btn ghost" data-add="${k}">＋ ${l}</button>`).join('')}</div>`;
     $$('[data-del]', host).forEach((b) => b.onclick = () => { read(); qs.splice(+b.dataset.del, 1); draw(); });
     $$('[data-ty]', host).forEach((b) => b.onclick = () => { read(); qs[+b.closest('.qed').dataset.i].type = b.dataset.ty; draw(); });
     $$('[data-add]', host).forEach((b) => b.onclick = () => { read(); qs.push(blankQ(b.dataset.add)); draw(); $$('.qed', host).slice(-1)[0]?.querySelector('textarea')?.focus(); });
@@ -222,13 +226,14 @@ function examBuilder(host, qs) {
       if (q.type === 'mcq') { q.options = [0, 1, 2, 3].map((k) => box.querySelector(`[data-o="${k}"]`).value.trim()); const a = box.querySelector(`input[name="a${i}"]:checked`); q.answer = a ? +a.value : 0; }
       if (q.type === 'tf') { const a = box.querySelector(`input[name="tf${i}"]:checked`); q.tf = !a || a.value === '1'; }
       if (q.type === 'fill') q.fill = box.querySelector('[data-f="fill"]').value.trim();
-      if (q.type === 'essay') q.model = box.querySelector('[data-f="model"]').value.trim(); });
+      if (q.type === 'essay') q.model = box.querySelector('[data-f="model"]').value.trim();
+      if (opts.game) { q.title = box.querySelector('[data-f="title"]').value.trim(); q.explain = box.querySelector('[data-f="explain"]').value.trim(); } });
   };
   draw();
   return () => { read(); const pub = [], key = [];
     for (const [n, q] of qs.entries()) {
       if (!q.q) { if (q.type !== 'mcq' || !q.options.some(Boolean)) continue; return { error: `سؤال ${ar(n + 1)} محتاج نص` }; }
-      const base = { type: q.type, q: q.q, pts: q.pts || 1 };
+      const base = { type: q.type, q: q.q, pts: q.pts || 1, ...(opts.game ? { title: q.title || '', explain: q.explain || '' } : {}) };
       if (q.type === 'mcq') { const opts = q.options.map((o, k) => ({ o, k })).filter((x) => x.o); if (opts.length < 2) return { error: `سؤال ${ar(n + 1)} محتاج اختيارين على الأقل` };
         const ans = opts.findIndex((x) => x.k === q.answer); if (ans < 0) return { error: `في سؤال ${ar(n + 1)} الإجابة الصح اختيار فاضي` }; pub.push({ ...base, options: opts.map((x) => x.o) }); key.push(ans); }
       if (q.type === 'tf') { pub.push(base); key.push(q.tf !== false); }
@@ -288,6 +293,29 @@ async function examGrader(el, id) {
     $('.gsave', card).onclick = async (ev) => { ev.target.disabled = true; const ok = await api.gradeSubmission(id, s.phone, grades); s.grades = grades; toast(ok ? 'اتحفظت الدرجات ✓' : 'مقدرناش نحفظ، اتأكد من قواعد Firebase'); ev.target.disabled = false;
       const r = scoreSub(e, key, s); const tg = card.querySelector('.between .tag'); tg.className = `tag ${r.pending ? 'late' : 'ok'}`; tg.textContent = `${ar(r.score)} / ${ar(r.total)}${r.pending ? `، ${ar(r.pending)} مستني` : ''}`; };
   });
+}
+
+// ---------------------------------------------------------------- game of the day
+function gameTab(el, arg) {
+  const sel = +arg || gameDay()?.n || 1; const d = DAYS.find((x) => x.n === sel) || DAYS[0];
+  const g = gameFor(sel); const custom = !!S.days[sel]?.game; const ps = players(sel);
+  const qs = g ? g.stations.map((s) => ({ ...toEditable(s, s.answer), title: /^المحطة/.test(s.title) ? '' : s.title, explain: s.explain || '' })) : [blankQ('mcq')];
+  el.innerHTML = `<section class="card"><h2>🎮 لعبة اليوم</h2><p class="sub">محطات أسئلة على قراية اليوم، بتظهر للمخدومين في زرار «لعبة النهارده» في الصفحة الرئيسية، وبتتصحح على طول مع ترتيب للي لعبوا.</p>
+    <select id="gsel" style="margin-top:10px">${DAYS.map((y) => `<option value="${y.n}" ${y.n === d.n ? 'selected' : ''}>اليوم ${ar(y.n)}، ${fmtDate(y.date)}${S.days[y.n]?.game || GAMES[y.n] ? ' 🎮' : ''}</option>`).join('')}</select>
+    <p class="dsum">${otLabel(d)}${d.nt ? ' + ' + ntLabel(d) : ''}<br><small>${g ? (custom ? 'لعبة عملها الخدام' : 'لعبة جاهزة من الموقع، تقدر تعدّلها') : 'مفيش لعبة لليوم ده لسه'}${ps.length ? `، لعبها ${ar(ps.length)}` : ''}</small></p></section>
+  <section class="card"><input class="inp" id="gt" value="${esc(g?.title || '')}" placeholder="اسم اللعبة، مثلًا: اطلع من الفلك 🛶">
+    <input class="inp" id="gi" value="${esc(g?.intro || '')}" placeholder="جملة حماسية في البداية (اختياري)" style="margin-top:8px">
+    <h2 style="margin-top:14px">المحطات</h2><p class="sub">٣ أنواع بس عشان تتصحح على طول: اختياري، صح وخطأ، أكمل.</p><div id="gqb" style="margin-top:8px"></div>
+    <div class="actions"><button class="btn red" id="gsv">احفظ اللعبة</button>${custom ? '<button class="btn ghost" id="gdel">امسح تعديلاتي</button>' : ''}</div></section>
+  ${ps.length ? `<section class="card"><h2>اللي لعبوا (${ar(ps.length)})</h2>${ps.map(({ u, r }, i) => `<div class="member"><span class="rkk">${ar(i + 1)}</span>${avatar(u.name, 30)}<span class="grow">${esc(u.name)}</span><b>${ar(r.c)}/${ar(r.t)}</b><small class="muted" style="margin-right:8px">${ar(Math.floor((r.d || 0) / 60))}:${ar(String((r.d || 0) % 60).padStart(2, '0'))}</small></div>`).join('')}</section>` : ''}`;
+  const get = examBuilder($('#gqb', el), qs, { types: ['mcq', 'tf', 'fill'], game: true });
+  $('#gsel', el).onchange = (e) => { location.hash = `#/khadem/game/${e.target.value}`; };
+  $('#gsv', el).onclick = async () => {
+    const title = $('#gt', el).value.trim(); if (!title) return toast('اكتب اسم اللعبة'); const r = get(); if (r.error) return toast(r.error); if (r.questions.length < 2) return toast('ضيف محطتين على الأقل');
+    const stations = r.questions.map((q, i) => { const x = { type: q.type, q: q.q, answer: r.key[i], explain: q.explain || '' }; if (q.options) x.options = q.options; if (q.title) x.title = q.title; return x; });
+    await api.saveDay(sel, { game: { title, intro: $('#gi', el).value.trim(), stations } }); toast('اتحفظت اللعبة 🎮');
+  };
+  $('#gdel', el) && ($('#gdel', el).onclick = async () => { await api.saveDay(sel, { game: null }); toast('رجعت للعبة الأصلية'); setTimeout(() => gameTab(el, sel), 300); });
 }
 
 // ---------------------------------------------------------------- word of the day
