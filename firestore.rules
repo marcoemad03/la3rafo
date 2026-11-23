@@ -25,13 +25,22 @@ service cloud.firestore {
         && sid == request.resource.data.examId + '_' + request.resource.data.phone
         && get(/databases/$(db)/documents/exams/$(request.resource.data.examId)).data.status == 'open';
       allow read: if isServant() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isServant() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['grades']);
       allow delete: if isServant();
+    }
+    match /questions/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.text is string && request.resource.data.text.size() <= 600
+        && request.resource.data.verse is string && request.resource.data.verse.size() <= 1500;
+      allow read: if isServant() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isServant();
     }
     match /wall/{id} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid
         && request.resource.data.type in ['verse','prayer']
-        && request.resource.data.text is string && request.resource.data.text.size() <= 400
+        && request.resource.data.text is string && request.resource.data.text.size() <= 1500
         && request.resource.data.prayed == 0;
       allow update: if signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prayed'])
         && request.resource.data.prayed == resource.data.prayed + 1;
