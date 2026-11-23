@@ -307,7 +307,7 @@ function gameTab(el, arg) {
     <input class="inp" id="gi" value="${esc(g?.intro || '')}" placeholder="جملة حماسية في البداية (اختياري)" style="margin-top:8px">
     <h2 style="margin-top:14px">المحطات</h2><p class="sub">٣ أنواع بس عشان تتصحح على طول: اختياري، صح وخطأ، أكمل.</p><div id="gqb" style="margin-top:8px"></div>
     <div class="actions"><button class="btn red" id="gsv">احفظ اللعبة</button>${custom ? '<button class="btn ghost" id="gdel">امسح تعديلاتي</button>' : ''}</div></section>
-  ${ps.length ? `<section class="card"><h2>اللي لعبوا (${ar(ps.length)})</h2>${ps.map(({ u, r }, i) => `<div class="member"><span class="rkk">${ar(i + 1)}</span>${avatar(u.name, 30)}<span class="grow">${esc(u.name)}</span><b>${ar(r.c)}/${ar(r.t)}</b><small class="muted" style="margin-right:8px">${ar(Math.floor((r.d || 0) / 60))}:${ar(String((r.d || 0) % 60).padStart(2, '0'))}</small></div>`).join('')}</section>` : ''}`;
+  ${ps.length ? `<section class="card"><h2>اللي لعبوا (${ar(ps.length)})</h2>${ps.map(({ u, r }, i) => `<div class="member"><span class="rkk">${ar(i + 1)}</span>${avatar(u.name, 30)}<span class="grow">${esc(u.name)}</span><b>${ar(r.c)}/${ar(r.t)}</b><small class="muted" style="margin:0 8px">${ar(Math.floor((r.d || 0) / 60))}:${ar(String((r.d || 0) % 60).padStart(2, '0'))}</small><button class="chip" data-reset="${u.phone}">يعيد</button></div>`).join('')}<p class="hint">«يعيد» بيمسح نتيجته في اللعبة دي، فيقدر يلعبها تاني وتتحسب.</p></section>` : ''}`;
   const get = examBuilder($('#gqb', el), qs, { types: ['mcq', 'tf', 'fill'], game: true });
   $('#gsel', el).onchange = (e) => { location.hash = `#/khadem/game/${e.target.value}`; };
   $('#gsv', el).onclick = async () => {
@@ -315,6 +315,10 @@ function gameTab(el, arg) {
     const stations = r.questions.map((q, i) => { const x = { type: q.type, q: q.q, answer: r.key[i], explain: q.explain || '' }; if (q.options) x.options = q.options; if (q.title) x.title = q.title; return x; });
     await api.saveDay(sel, { game: { title, intro: $('#gi', el).value.trim(), stations } }); toast('اتحفظت اللعبة 🎮');
   };
+  $$('[data-reset]', el).forEach((b) => b.onclick = async () => {
+    if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'متأكد؟'; b.style.color = 'var(--red)'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'يعيد'; b.style.color = ''; }, 3000); return; }
+    b.disabled = true; const ok = await api.resetGame(b.dataset.reset, sel); toast(ok ? 'اتمسحت النتيجة، يقدر يلعب تاني ✓' : 'مقدرناش نمسحها'); setTimeout(() => gameTab(el, sel), 300);
+  });
   $('#gdel', el) && ($('#gdel', el).onclick = async () => { await api.saveDay(sel, { game: null }); toast('رجعت للعبة الأصلية'); setTimeout(() => gameTab(el, sel), 300); });
 }
 
