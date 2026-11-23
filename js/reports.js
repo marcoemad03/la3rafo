@@ -101,7 +101,7 @@ async function personBlocks(R) {
   const B = [];
   B.push({ html: `<div class="person"><div><b>${esc(u.name)}</b><span dir="ltr">${esc(u.phone)}</span></div><div class="muted">اشترك ${u.createdAt ? fmtDate(cairoDate(typeof u.createdAt === 'number' ? u.createdAt : (u.createdAt.seconds || 0) * 1000), false) : ''}</div></div>
     <div class="kpis">${[[ar(s.on), 'في معاده'], [ar(s.la), 'متأخر'], [ar(s.no), 'فاته'], [`${ar(s.cons)}٪`, 'الانتظام'], [`${ar(s.done)}٪`, 'قرا من الفترة'],
-      [(() => { const q = Object.values(u.quiz || {}); const c = q.reduce((a, x) => a + (x.c || 0), 0), t = q.reduce((a, x) => a + (x.t || 0), 0); return t ? `${ar(c)}/${ar(t)}` : '—'; })(), 'أسئلة الأصحاحات'],
+      [(() => { const q = Object.entries(u.quiz || {}).filter(([k]) => !k.startsWith('game_')).map(([, v]) => v); const c = q.reduce((a, x) => a + (x.c || 0), 0), t = q.reduce((a, x) => a + (x.t || 0), 0); return t ? `${ar(c)}/${ar(t)}` : '—'; })(), 'أسئلة الأصحاحات'],
       [ar(mine.length), 'امتحان دخله'], [ar(S.wall.filter((w) => w.phone === u.phone && w.type === 'verse').length), 'آية شاركها'], [ar(qs.filter((q) => q.phone === u.phone).length), 'سؤال سأله']].map(([v, l]) => `<div class="k"><b>${v}</b><span>${l}</span></div>`).join('')}</div>` });
   B.push({ table: { title: 'القراءة يوم بيوم', head: ['اليوم', 'التاريخ', 'القراءة', 'الحالة', 'سجّل إمتى', 'أسئلة الأصحاح'],
     rows: days.map((d) => { const st = d.date > today ? 'fu' : readState(u, d.n); const keys = [...d.ot.map((c) => `gen_${c}`), ...(d.nt ? [`${d.nt.book}_${d.nt.ch}`] : [])]; const q = keys.map((k) => u.quiz?.[k]).filter(Boolean);
