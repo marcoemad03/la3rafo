@@ -1,5 +1,6 @@
 import { KEY_VERSES, DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
-import { init, api, on, mode, normPhone, validPhone } from './data.js';
+import { init, api, on, mode, normPhone, validPhone, initialOf } from './data.js';
+import { versePicker, askModal, myQuestionsHTML } from './extras.js';
 import { $, $$, esc, APP, NAV, S, reduce, color, initial, first, avatar, timeAgo, toast, vibrate, myRead, meU, greeting, loadText, ICON, topbar, logos, burst } from './ui.js';
 import { userStats, readState, nextBadge, weekRange } from './stats.js';
 import { lamp, vBoard, journeySegs, chapterQuiz, vExam, examBanner, ttsSetup, shareVerseImage } from './features.js';
@@ -107,7 +108,7 @@ function vToday() {
   } else {
     hero = `<section class="card dayhero" style="text-align:center"><span class="eyebrow">الرحلة خلصت</span><h2 style="font-size:28px;color:#fff;margin:6px 0">كل سنة وانت طيب ✨</h2><p style="color:#e9d6a8;line-height:1.8">قريت ${ar(r.size)} من ${ar(TOTAL)} يوم. «لأعرفه… وقوة قيامته»</p><a class="btn light" href="#/me" style="margin-top:14px">شوف شهادتك</a></section>`;
   }
-  APP.innerHTML = `<div class="view">${topbar()}<div class="stagger"><div class="hello"><h1>${greeting()} يا ${esc(name)} 👋</h1><p>${st.phase === 'reading' ? 'جاهز لخطوة النهارده على الجبل؟' : 'خليك قريب… الرحلة مستمرة.'}</p></div>${nudgeHTML()}<div id="exb"></div>${hero}${st.phase !== 'reading' ? weekHTML() : ''}${lampsHTML()}${familyHTML()}${missedHTML()}${countdownHTML()}${logos()}</div></div>`;
+  APP.innerHTML = `<div class="view">${topbar()}<div class="stagger"><div class="hello"><h1>${greeting()} يا ${esc(name)} 👋</h1><p>${st.phase === 'reading' ? 'جاهز لخطوة النهارده على الجبل؟' : 'خليك قريب… الرحلة مستمرة.'}</p></div>${nudgeHTML()}<div id="exb"></div>${hero}${st.phase !== 'reading' ? weekHTML() : ''}${lampsHTML()}${familyHTML()}<a class="card askpre" href="#/wall/ask"><span class="ei">❓</span><span class="grow"><b>عندك سؤال أو محتاج تفسير لآية؟</b><small>اسأل الخدام، والرد هيوصلك على الواتساب</small></span>${ICON.back}</a>${missedHTML()}${countdownHTML()}${logos()}</div></div>`;
   $('#readNow')?.addEventListener('click', (e) => markRead(st.day.n, e.currentTarget));
   examBanner($('#exb'));
   if (st.phase === 'reading') {
@@ -127,14 +128,16 @@ async function vRead(n, tab = 0) {
   chapEl.innerHTML = `<p class="eyebrow" style="text-align:center">اليوم ${ar(d.n)} — ${fmtDate(d.date)}</p><h2>${p.book === 'gen' ? 'سفر التكوين' : BOOKS[p.book]}</h2><div class="orn">الأصحاح ${ar(p.ch)}</div>
     <div class="text" style="--fs:${S.fs}px">${vs.map((v, i) => `<span class="v" data-v="${i + 1}" data-t="${esc(v)}"><sup>${ar(i + 1)}</sup>${esc(v)}</span> `).join('')}</div><div id="cquiz"></div>
     <div class="endread">${tab < ps.length - 1 ? `<a class="btn primary block" href="#/read/${d.n}/${tab + 1}">الأصحاح اللي بعده ←</a>` : (myRead().has(d.n) ? `<button class="btn done block" disabled style="opacity:1">${ICON.check} قريت اليوم ده</button>` : `<button class="btn red block readbtn" id="rdone"><span class="glow"></span>خلّصت… قريت ✓</button>`)}
-    <p class="hint">دوس على أي آية عشان تختارها وتشاركها في «آيات لمستنا»</p></div>
-    <div class="selbar" id="selbar"><button class="btn light" id="share">✨ آية لمستني</button><button class="btn light" id="simg">🖼️ صورة</button><button class="btn ghost" style="color:var(--cream);border-color:rgba(255,255,255,.3)" id="copy">نسخ</button></div>`;
+    <p class="hint">دوس على أي آية عشان تختارها: تشاركها في «آيات لمستنا»، أو تسأل الخدام عنها</p></div>
+    <div class="selbar" id="selbar"><button class="btn light" id="share">✨ آية لمستني</button><button class="btn light" id="simg">🖼️ صورة</button><button class="btn light" id="sask">❓ اسأل</button><button class="btn ghost" style="color:var(--cream);border-color:rgba(255,255,255,.3)" id="copy">نسخ</button></div>`;
+  $$('body > .selbar').forEach((x) => x.remove()); document.body.appendChild($('#selbar')); // fixed bar must live outside the animated view
   const sel = new Set();
   const upd = () => $('#selbar').classList.toggle('show', sel.size > 0);
   $$('.v', chapEl).forEach((el) => el.addEventListener('click', () => { const k = +el.dataset.v; sel.has(k) ? sel.delete(k) : sel.add(k); el.classList.toggle('sel'); upd(); }));
   const selText = () => { const ks = [...sel].sort((a, b) => a - b); return { text: ks.map((k) => vs[k - 1]).join(' '), ref: `${p.book === 'gen' ? 'تكوين' : BOOKS[p.book]} ${ar(p.ch)}: ${ar(ks[0])}${ks.length > 1 ? '-' + ar(ks[ks.length - 1]) : ''}` }; };
   $('#share').onclick = async () => { const s = selText(); await api.post('verse', s.text, s.ref); toast('اتشاركت في «آيات لمستنا» ✨'); $$('.v.sel').forEach((x) => x.classList.replace('sel', 'mark')); sel.clear(); upd(); };
   $('#simg').onclick = async () => { const s = selText(); await shareVerseImage(s.text, s.ref); };
+  $('#sask').onclick = () => { const s = selText(); askModal(s); $$('.v.sel').forEach((x) => x.classList.remove('sel')); sel.clear(); upd(); };
   ttsSetup($('#tts'), $$('.v', chapEl));
   chapterQuiz($('#cquiz'), `${p.book}_${p.ch}`, `${p.book === 'gen' ? 'التكوين' : BOOKS[p.book]} ${ar(p.ch)}`);
   const applyNight = () => document.body.classList.toggle('night', !!S.night); try { S.night = localStorage.getItem('la3rafo:night') === '1'; } catch (e) { /* ignore */ } applyNight();
@@ -223,18 +226,40 @@ function vPlan() {
 }
 
 function prayedSet() { try { return new Set(JSON.parse(localStorage.getItem('la3rafo:prayed') || '[]')); } catch (e) { return new Set(); } }
-function vWall() {
+async function vWall(tabArg) {
+  if (['verse', 'prayer', 'ask'].includes(tabArg)) S.wallTab = tabArg;
   const tab = S.wallTab; const list = S.wall.filter((w) => w.type === tab).sort((a, b) => b.at - a.at); const pr = prayedSet();
+  const mine = (w) => (w.uid ? w.uid === api.myUid() : w.phone === S.me.phone);
+  const pending = (S.myq || []).filter((q) => q.status !== 'answered').length;
+  const post = (w) => {
+    const anon = w.type === 'prayer'; const who = anon ? initialOf(w.name) : w.name;
+    return `<article class="card post ${w.type}"><div class="who">${anon ? `<span class="av anon">${esc(who.replace('.', ''))}</span>` : avatar(w.name)}<div class="grow"><b>${esc(who)}</b><div class="sub" style="font-size:12px">${anon ? 'واحد من الأسرة، ' : ''}${timeAgo(w.at)}</div></div>${mine(w) ? `<button class="chip" data-del="${w.id}" aria-label="حذف">حذف</button>` : ''}</div>
+    <p class="txt ${w.type === 'verse' ? 'verse-q' : ''}">${w.type === 'verse' ? '«' + esc(w.text) + '»' : esc(w.text)}</p>${w.ref ? `<p class="ref">${esc(w.ref)}</p>` : ''}${w.note ? `<p class="note">💭 ${esc(w.note)}</p>` : ''}
+    ${anon ? `<div class="foot"><span class="sub">${ar(w.prayed || 0)} صلّوا</span><button class="pray ${pr.has(w.id) ? 'did' : ''}" data-pray="${w.id}">${pr.has(w.id) ? 'صلّيت ✓' : '🙏 صلّيت'}</button></div>` : ''}</article>`;
+  };
+  const compose = {
+    verse: `<section class="card compose"><h3 class="ch3">اختار الآية اللي لمستك</h3><div id="vpick"></div>
+      <input class="inp" id="pnote" maxlength="200" placeholder="ليه لمستك؟ (اختياري)" style="margin-top:10px"><button class="btn primary block" id="psend" style="margin-top:10px">شارك الآية ✨</button></section>`,
+    prayer: `<section class="card compose"><textarea id="ptext" maxlength="400" placeholder="اكتب طلبتك… وإحنا هنصلّي لك"></textarea><p class="hint" style="margin:6px 2px 0">🔒 اسمك مش هيظهر، هيظهر أول حرف منه بس.</p>
+      <button class="btn primary block" id="psend" style="margin-top:10px">اطلب صلاة</button></section>`,
+    ask: `<section class="card ask-cta"><div class="big">❓</div><h2>عندك سؤال أو محتاج تفسير لآية؟</h2><p class="sub">اسأل الخدام، والرد هيوصلك على الواتساب. سؤالك محدش بيشوفه غير الخدام.</p><button class="btn red block" id="ask">اسأل دلوقتي</button>
+      <p class="hint" style="margin-top:8px">ممكن كمان وإنت بتقرا: دوس على الآية واختار «❓ اسأل».</p></section><h3 class="ch3" style="margin:16px 4px 8px">أسئلتي</h3>`,
+  }[tab];
   APP.innerHTML = `<div class="view">${topbar()}<div class="hello"><h1>الأسرة 🤍</h1><p>«احملوا بعضكم أثقال بعض»</p></div>
-  <div class="seg" role="tablist"><button class="${tab === 'verse' ? 'on' : ''}" data-t="verse">✨ آيات لمستنا</button><button class="${tab === 'prayer' ? 'on' : ''}" data-t="prayer">🙏 طلبات صلاة</button></div>
-  <section class="card compose"><textarea id="ptext" maxlength="400" placeholder="${tab === 'verse' ? 'اكتب الآية اللي لمستك النهارده…' : 'اكتب طلبتك… وإحنا هنصلّي لك'}"></textarea>${tab === 'verse' ? '<input id="pref" maxlength="40" placeholder="الشاهد (مثلًا: تكوين ١: ٣)">' : ''}
-  <button class="btn primary block" id="psend" style="margin-top:10px">${tab === 'verse' ? 'شارك الآية' : 'اطلب صلاة'}</button></section>
-  <div class="stagger">${list.length ? list.map((w) => `<article class="card post ${w.type}"><div class="who">${avatar(w.name)}<div class="grow"><b>${esc(w.name)}</b><div class="sub" style="font-size:12px">${timeAgo(w.at)}</div></div>${w.phone === S.me.phone ? `<button class="chip" data-del="${w.id}" aria-label="حذف">حذف</button>` : ''}</div>
-    <p class="txt ${w.type === 'verse' ? 'verse-q' : ''}">${w.type === 'verse' ? '«' + esc(w.text) + '»' : esc(w.text)}</p>${w.ref ? `<p class="ref">${esc(w.ref)}</p>` : ''}
-    ${w.type === 'prayer' ? `<div class="foot"><span class="sub">${ar(w.prayed || 0)} صلّوا</span><button class="pray ${pr.has(w.id) ? 'did' : ''}" data-pray="${w.id}">${pr.has(w.id) ? 'صلّيت ✓' : '🙏 صلّيت'}</button></div>` : ''}</article>`).join('')
+  <div class="seg three" role="tablist"><button class="${tab === 'verse' ? 'on' : ''}" data-t="verse">✨ آيات لمستنا</button><button class="${tab === 'prayer' ? 'on' : ''}" data-t="prayer">🙏 طلبات صلاة</button><button class="${tab === 'ask' ? 'on' : ''}" data-t="ask">❓ اسأل${pending ? ` <i class="dot">${ar(pending)}</i>` : ''}</button></div>
+  ${compose}
+  <div class="stagger">${tab === 'ask' ? myQuestionsHTML(S.myq || []) : list.length ? list.map(post).join('')
     : `<div class="card" style="text-align:center"><p class="muted">لسه مفيش حاجة هنا… كن أول واحد يشارك 🤍</p></div>`}</div>${logos()}</div>`;
-  $$('.seg button').forEach((b) => b.onclick = () => { S.wallTab = b.dataset.t; vWall(); });
-  $('#psend').onclick = async () => { const t = $('#ptext').value.trim(); if (t.length < 3) return toast('اكتب حاجة الأول 🙂'); $('#psend').disabled = true; await api.post(tab, t, $('#pref')?.value.trim()); toast(tab === 'verse' ? 'اتشاركت ✨' : 'طلبتك وصلت… هنصلّي لك 🙏'); };
+  $$('.seg button').forEach((b) => b.onclick = () => { location.hash = '#/wall/' + b.dataset.t; });
+  if (tab === 'ask') { $('#ask').onclick = () => askModal(); return; }
+  let getVerse = null; if (tab === 'verse') getVerse = await versePicker($('#vpick'), {}, { keep: (S.vpWall = S.vpWall || {}) });
+  $('#psend').onclick = async () => {
+    if (tab === 'verse') {
+      const v = getVerse && getVerse(); if (!v || !v.text) return toast('اختار الآية الأول 🙂');
+      $('#psend').disabled = true; await api.post('verse', v.text, v.ref, $('#pnote').value.trim()); toast('اتشاركت ✨'); return;
+    }
+    const t = $('#ptext').value.trim(); if (t.length < 3) return toast('اكتب طلبتك الأول 🙂'); $('#psend').disabled = true; await api.post('prayer', t); toast('طلبتك وصلت… هنصلّي لك 🙏');
+  };
   $$('[data-pray]').forEach((b) => b.onclick = async () => { const id = b.dataset.pray; const s = prayedSet(); if (s.has(id)) return; s.add(id); localStorage.setItem('la3rafo:prayed', JSON.stringify([...s])); vibrate(15); const r = b.getBoundingClientRect(); burst(r.left + r.width / 2, r.top, 30); await api.pray(id); });
   $$('[data-del]').forEach((b) => b.onclick = async () => { if (b.dataset.sure) { await api.removePost(b.dataset.del); toast('اتمسح'); } else { b.dataset.sure = '1'; b.textContent = 'متأكد؟'; b.style.color = 'var(--red)'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'حذف'; b.style.color = ''; }, 3000); } });
 }
@@ -371,6 +396,7 @@ function intro3D() {
 
 // ---------- router ----------
 function route() {
+  $$('body > .selbar').forEach((x) => x.remove());
   if (!S.me) return vOnboard();
   APP.classList.remove('full');
   { const rr = (location.hash || '#/today').split('/')[1]; NAV.hidden = rr === 'read' || rr === 'exam'; document.body.classList.toggle('reading', rr === 'read'); }
@@ -378,13 +404,14 @@ function route() {
   if (r === 'servants') { location.hash = '#/khadem'; return; }
   try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } if (r !== 'read') document.body.classList.remove('night');
   $$('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.r === r || (r === 'read' && x.dataset.r === 'today') || (r === 'exam' && x.dataset.r === 'journey')));
-  const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: vWall, me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a) }[r] || vToday;
+  const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: () => vWall(a), me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a) }[r] || vToday;
   const same = S.lastRoute === location.hash; S.lastRoute = location.hash;
   v(); if (!same && r !== 'journey' && r !== 'plan' && r !== 'read') scrollTo(0, 0);
 }
-let rt; const rerender = (kinds) => () => { clearTimeout(rt); rt = setTimeout(() => { const r = (location.hash.split('/')[1] || 'today'); const sub = location.hash.split('/')[2]; if (r === 'khadem' && ['quiz', 'exams', 'word'].includes(sub)) return; if (S.me && kinds.includes(r) && !document.activeElement?.matches('input,textarea,select')) route(); }, 120); };
+let rt; const pendK = new Set(); const rerender = (kinds) => () => { kinds.forEach((k) => pendK.add(k)); clearTimeout(rt); rt = setTimeout(() => { const ks = new Set(pendK); pendK.clear(); const r = (location.hash.split('/')[1] || 'today'); const sub = location.hash.split('/')[2]; if (r === 'khadem' && ['quiz', 'exams', 'word', 'asks', 'reports'].includes(sub)) return; if (S.me && ks.has(r) && !document.activeElement?.matches('input,textarea,select')) route(); }, 120); };
 on('users', (u) => { S.users = u; if (S.me) { const m = u.find((x) => x.phone === S.me.phone); if (m) S.me = m; } rerender(['today', 'journey', 'plan', 'me', 'khadem'])(); });
 on('wall', (w) => { S.wall = w; rerender(['wall'])(); });
+on('myq', (q) => { S.myq = q; rerender(['wall'])(); });
 on('days', (d) => { S.days = d; rerender(['today', 'khadem'])(); });
 on('chq', (d) => { S.chq = d; rerender(['khadem'])(); });
 on('exams', (d) => { S.exams = d; rerender(['today', 'journey', 'khadem'])(); });
