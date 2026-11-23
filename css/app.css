@@ -536,3 +536,5 @@ body:not(.reading) .selbar{bottom:calc(var(--nav-h) + var(--safe-b) + 24px)}
 .rpages img{width:100%;border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .aq .who{display:flex;align-items:center;gap:10px}
 .qed textarea.inp{min-height:64px}
+.pverse{margin:14px 0 12px;text-align:center;border-right:none;border-radius:18px;background:linear-gradient(135deg,#fff8e6,#fdf0cf);border:1.5px solid #ecd08f;padding:16px 18px}
+.pverse p{font-size:20px}.pverse cite{margin-top:6px}
