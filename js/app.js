@@ -1,7 +1,7 @@
 import { KEY_VERSES, DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
 import { init, api, on, mode, normPhone, validPhone, initialOf } from './data.js';
 import { versePicker, askModal, myQuestionsHTML } from './extras.js';
-import { vGame, gameCTA } from './game.js';
+import { vGame, vGames, gameCTA } from './game.js';
 import { $, $$, esc, APP, NAV, S, reduce, color, initial, first, avatar, timeAgo, toast, vibrate, myRead, meU, greeting, loadText, ICON, topbar, logos, burst } from './ui.js';
 import { userStats, readState, nextBadge, weekRange } from './stats.js';
 import { lamp, vBoard, journeySegs, chapterQuiz, vExam, examBanner, ttsSetup, shareVerseImage } from './features.js';
@@ -405,7 +405,7 @@ function route() {
   if (r === 'servants') { location.hash = '#/khadem'; return; }
   try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } if (r !== 'read') document.body.classList.remove('night');
   $$('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.r === r || (r === 'read' && x.dataset.r === 'today') || (r === 'exam' && x.dataset.r === 'journey')));
-  const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: () => vWall(a), me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a), game: () => vGame(a) }[r] || vToday;
+  const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: () => vWall(a), me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a), game: () => vGame(a), games: vGames }[r] || vToday;
   const same = S.lastRoute === location.hash; S.lastRoute = location.hash;
   v(); if (!same && r !== 'journey' && r !== 'plan' && r !== 'read') scrollTo(0, 0);
 }

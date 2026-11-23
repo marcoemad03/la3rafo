@@ -4,7 +4,7 @@ import { api, mode, normPhone, buildResults, scoreSub, gradeOne, QTYPES, qPts, q
 import { $, $$, esc, APP, S, first, avatar, toast, topbar, burst, ICON } from './ui.js';
 import { userStats, readState, cairoDate } from './stats.js';
 import { reportsTab } from './reports.js';
-import { gameFor, gameDay, players, GAMES } from './game.js';
+import { gameFor, gameDay, players, GAMES, GTYPES } from './game.js';
 import { timeAgo } from './ui.js';
 
 const CH = [['gen', 50], ['jas', 5], ['1pe', 5], ['2pe', 3], ['1jn', 5], ['2jn', 1], ['3jn', 1], ['jud', 1], ['rev', 22]]
@@ -201,9 +201,9 @@ async function examsTab(el, arg) {
   }));
 }
 const needsGrading = (e) => (e.questions || []).some((q) => ['essay', 'fill'].includes(qType(q)));
-const TYPE_HINT = { mcq: 'علّم الدايرة جنب الإجابة الصح', tf: 'اختار الإجابة الصح', fill: 'حط «……» مكان الكلمة الناقصة في السؤال', essay: 'المخدوم بيكتب إجابته، وإنت بتصححها بإيدك' };
+const TYPE_HINT = { mcq: 'علّم الدايرة جنب الإجابة الصح', tf: 'اختار الإجابة الصح', fill: 'حط «……» مكان الكلمة الناقصة في السؤال', essay: 'المخدوم بيكتب إجابته، وإنت بتصححها بإيدك', order: 'اكتب الأحداث بالترتيب الصح، كل حدث في سطر (من ٣ لـ ٧). الموقع هيلخبطهم لوحده', verse: 'اكتب الآية بالظبط، والموقع هيقطّعها كلمات ويلخبطها', match: 'كل سطر: الحاجة = اللي يخصها (من ٣ لـ ٦ سطور)' };
 function examBuilder(host, qs, opts = {}) {
-  const TY = Object.entries(QTYPES).filter(([k]) => !opts.types || opts.types.includes(k));
+  const TY = Object.entries(opts.game ? GTYPES : QTYPES).filter(([k]) => !opts.types || opts.types.includes(k));
   const draw = () => {
     host.innerHTML = qs.map((q, i) => `<div class="qed" data-i="${i}"><div class="between"><b>سؤال ${ar(i + 1)}</b><span class="row" style="gap:6px"><label class="pts">الدرجة <input type="number" min="1" max="20" data-f="pts" value="${q.pts || 1}"></label><button class="chip" data-del="${i}">حذف</button></span></div>
       ${opts.game ? `<input class="inp" data-f="title" value="${esc(q.title || '')}" placeholder="عنوان المحطة (اختياري)، مثلًا: فين؟" style="margin-top:8px">` : ''}
@@ -212,6 +212,9 @@ function examBuilder(host, qs, opts = {}) {
       ${q.type === 'mcq' ? [0, 1, 2, 3].map((k) => `<label class="optin"><input type="radio" name="a${i}" value="${k}" ${q.answer === k ? 'checked' : ''} aria-label="الإجابة الصح"><input class="inp" data-o="${k}" value="${esc(q.options[k] || '')}" placeholder="اختيار ${'أبجد'[k]}${k > 1 ? ' (اختياري)' : ''}"></label>`).join('') : ''}
       ${q.type === 'tf' ? `<div class="tfpick"><label><input type="radio" name="tf${i}" value="1" ${q.tf !== false ? 'checked' : ''}> ✓ صح</label><label><input type="radio" name="tf${i}" value="0" ${q.tf === false ? 'checked' : ''}> ✗ خطأ</label></div>` : ''}
       ${q.type === 'fill' ? `<input class="inp" data-f="fill" value="${esc(q.fill || '')}" placeholder="الإجابة الصح. لو فيه أكتر من إجابة مقبولة افصل بينهم بـ /">` : ''}
+      ${q.type === 'order' ? `<textarea class="inp" data-f="items" rows="5" placeholder="الحدث الأول&#10;الحدث التاني&#10;الحدث التالت">${esc(q.items || '')}</textarea>` : ''}
+      ${q.type === 'verse' ? `<textarea class="inp" data-f="verse" rows="3" placeholder="اكتب الآية هنا">${esc(q.verse || '')}</textarea>` : ''}
+      ${q.type === 'match' ? `<textarea class="inp" data-f="pairs" rows="5" placeholder="القوس = علامة الميثاق&#10;حام = أبو كنعان&#10;نوح = غرس كرم">${esc(q.pairs || '')}</textarea>` : ''}
       ${q.type === 'essay' ? `<textarea class="inp" data-f="model" rows="2" placeholder="إجابة نموذجية (اختياري، بتظهرلك إنت بس وقت التصحيح)">${esc(q.model || '')}</textarea>` : ''}
       ${opts.game ? `<input class="inp" data-f="explain" value="${esc(q.explain || '')}" placeholder="الشاهد أو التوضيح، بيظهر بعد الإجابة (اختياري)">` : ''}
       <p class="hint">${TYPE_HINT[q.type]}</p></div>`).join('')
@@ -227,11 +230,13 @@ function examBuilder(host, qs, opts = {}) {
       if (q.type === 'tf') { const a = box.querySelector(`input[name="tf${i}"]:checked`); q.tf = !a || a.value === '1'; }
       if (q.type === 'fill') q.fill = box.querySelector('[data-f="fill"]').value.trim();
       if (q.type === 'essay') q.model = box.querySelector('[data-f="model"]').value.trim();
+      for (const f of ['items', 'verse', 'pairs']) { const x = box.querySelector(`[data-f="${f}"]`); if (x) q[f] = x.value.trim(); }
       if (opts.game) { q.title = box.querySelector('[data-f="title"]').value.trim(); q.explain = box.querySelector('[data-f="explain"]').value.trim(); } });
   };
   draw();
   return () => { read(); const pub = [], key = [];
     for (const [n, q] of qs.entries()) {
+      if (!q.q && ['order', 'verse', 'match'].includes(q.type)) q.q = { order: 'رتّب الأحداث', verse: 'رتّب كلمات الآية', match: 'وصّل كل حاجة باللي يخصها' }[q.type];
       if (!q.q) { if (q.type !== 'mcq' || !q.options.some(Boolean)) continue; return { error: `سؤال ${ar(n + 1)} محتاج نص` }; }
       const base = { type: q.type, q: q.q, pts: q.pts || 1, ...(opts.game ? { title: q.title || '', explain: q.explain || '' } : {}) };
       if (q.type === 'mcq') { const opts = q.options.map((o, k) => ({ o, k })).filter((x) => x.o); if (opts.length < 2) return { error: `سؤال ${ar(n + 1)} محتاج اختيارين على الأقل` };
@@ -239,6 +244,9 @@ function examBuilder(host, qs, opts = {}) {
       if (q.type === 'tf') { pub.push(base); key.push(q.tf !== false); }
       if (q.type === 'fill') { if (!q.fill) return { error: `اكتب الإجابة الصح لسؤال ${ar(n + 1)}` }; pub.push(base); key.push(q.fill); }
       if (q.type === 'essay') { pub.push(base); key.push({ model: q.model || '' }); }
+      if (q.type === 'order') { const L = (q.items || '').split('\n').map((x) => x.trim()).filter(Boolean); if (L.length < 3 || L.length > 7) return { error: `مرحلة ${ar(n + 1)}: اكتب من ٣ لـ ٧ أحداث، كل حدث في سطر` }; pub.push(base); key.push(L); }
+      if (q.type === 'verse') { const w = (q.verse || '').split(/\s+/).filter(Boolean); if (w.length < 3 || w.length > 16) return { error: `مرحلة ${ar(n + 1)}: الآية لازم تكون من ٣ لـ ١٦ كلمة` }; pub.push(base); key.push(q.verse.replace(/\s+/g, ' ')); }
+      if (q.type === 'match') { const L = (q.pairs || '').split('\n').map((x) => x.split('=').map((y) => y.trim())).filter((x) => x.length === 2 && x[0] && x[1]); if (L.length < 3 || L.length > 6) return { error: `مرحلة ${ar(n + 1)}: اكتب من ٣ لـ ٦ سطور بالشكل ده: حاجة = اللي يخصها` }; pub.push(base); key.push(L.map(([a, b]) => ({ a, b }))); }
     }
     return { questions: pub, key }; };
 }
@@ -248,6 +256,9 @@ function toEditable(q, k) {
   if (t === 'mcq') return { ...b, options: [...(q.options || []), '', '', '', ''].slice(0, 4), answer: typeof k === 'number' ? k : 0 };
   if (t === 'tf') return { ...b, tf: k !== false };
   if (t === 'fill') return { ...b, fill: typeof k === 'string' ? k : '' };
+  if (t === 'order') return { ...b, items: Array.isArray(k) ? k.join('\n') : '' };
+  if (t === 'verse') return { ...b, verse: typeof k === 'string' ? k : '' };
+  if (t === 'match') return { ...b, pairs: Array.isArray(k) ? k.map((p) => `${p.a} = ${p.b}`).join('\n') : '' };
   return { ...b, model: (k && k.model) || '' };
 }
 async function examEditor(el, id) {
@@ -305,15 +316,16 @@ function gameTab(el, arg) {
     <p class="dsum">${otLabel(d)}${d.nt ? ' + ' + ntLabel(d) : ''}<br><small>${g ? (custom ? 'لعبة عملها الخدام' : 'لعبة جاهزة من الموقع، تقدر تعدّلها') : 'مفيش لعبة لليوم ده لسه'}${ps.length ? `، لعبها ${ar(ps.length)}` : ''}</small></p></section>
   <section class="card"><input class="inp" id="gt" value="${esc(g?.title || '')}" placeholder="اسم اللعبة، مثلًا: اطلع من الفلك 🛶">
     <input class="inp" id="gi" value="${esc(g?.intro || '')}" placeholder="جملة حماسية في البداية (اختياري)" style="margin-top:8px">
-    <h2 style="margin-top:14px">المحطات</h2><p class="sub">٣ أنواع بس عشان تتصحح على طول: اختياري، صح وخطأ، أكمل.</p><div id="gqb" style="margin-top:8px"></div>
+    <label class="vp-toggle" style="margin-top:10px"><input type="checkbox" id="grb" ${g?.theme === 'rainbow' ? 'checked' : ''}> شكل قوس قزح 🌈 (أحسن مع ٧ مراحل)</label>
+    <h2 style="margin-top:14px">المراحل</h2><p class="sub">٦ أنواع: اختياري، صح وخطأ، أكمل، رتّب الأحداث، الآية المكسّرة، وصّل. وكلهم بيتصححوا على طول.</p><div id="gqb" style="margin-top:8px"></div>
     <div class="actions"><button class="btn red" id="gsv">احفظ اللعبة</button>${custom ? '<button class="btn ghost" id="gdel">امسح تعديلاتي</button>' : ''}</div></section>
   ${ps.length ? `<section class="card"><h2>اللي لعبوا (${ar(ps.length)})</h2>${ps.map(({ u, r }, i) => `<div class="member"><span class="rkk">${ar(i + 1)}</span>${avatar(u.name, 30)}<span class="grow">${esc(u.name)}</span><b>${ar(r.c)}/${ar(r.t)}</b><small class="muted" style="margin:0 8px">${ar(Math.floor((r.d || 0) / 60))}:${ar(String((r.d || 0) % 60).padStart(2, '0'))}</small><button class="chip" data-reset="${u.phone}">يعيد</button></div>`).join('')}<p class="hint">«يعيد» بيمسح نتيجته في اللعبة دي، فيقدر يلعبها تاني وتتحسب.</p></section>` : ''}`;
-  const get = examBuilder($('#gqb', el), qs, { types: ['mcq', 'tf', 'fill'], game: true });
+  const get = examBuilder($('#gqb', el), qs, { game: true });
   $('#gsel', el).onchange = (e) => { location.hash = `#/khadem/game/${e.target.value}`; };
   $('#gsv', el).onclick = async () => {
     const title = $('#gt', el).value.trim(); if (!title) return toast('اكتب اسم اللعبة'); const r = get(); if (r.error) return toast(r.error); if (r.questions.length < 2) return toast('ضيف محطتين على الأقل');
     const stations = r.questions.map((q, i) => { const x = { type: q.type, q: q.q, answer: r.key[i], explain: q.explain || '' }; if (q.options) x.options = q.options; if (q.title) x.title = q.title; return x; });
-    await api.saveDay(sel, { game: { title, intro: $('#gi', el).value.trim(), stations } }); toast('اتحفظت اللعبة 🎮');
+    await api.saveDay(sel, { game: { title, intro: $('#gi', el).value.trim(), theme: $('#grb', el).checked ? 'rainbow' : '', stations } }); toast('اتحفظت اللعبة 🎮');
   };
   $$('[data-reset]', el).forEach((b) => b.onclick = async () => {
     if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'متأكد؟'; b.style.color = 'var(--red)'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'يعيد'; b.style.color = ''; }, 3000); return; }
