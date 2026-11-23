@@ -1,6 +1,6 @@
 import { KEY_VERSES, DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
-import { init, api, on, mode, normPhone, validPhone, initialOf } from './data.js';
-import { versePicker, askModal, myQuestionsHTML } from './extras.js';
+import { init, api, on, mode, normPhone, validPhone, initialOf, REACTS } from './data.js';
+import { versePicker, askModal, myQuestionsHTML, verseModal } from './extras.js';
 import { vGame, vGames, gameCTA } from './game.js';
 import { $, $$, esc, APP, NAV, S, reduce, color, initial, first, avatar, timeAgo, toast, vibrate, myRead, meU, greeting, loadText, ICON, topbar, logos, burst } from './ui.js';
 import { userStats, readState, nextBadge, weekRange } from './stats.js';
@@ -227,6 +227,36 @@ function vPlan() {
 }
 
 function prayedSet() { try { return new Set(JSON.parse(localStorage.getItem('la3rafo:prayed') || '[]')); } catch (e) { return new Set(); } }
+function reactBar(w) {
+  const r = w.reacts || {}; const mineK = r[api.myUid()]?.t; const n = Object.keys(r).length;
+  const cnt = {}; Object.values(r).forEach((x) => { cnt[x.t] = (cnt[x.t] || 0) + 1; });
+  const top = REACTS.filter((x) => cnt[x.k]).sort((a, b) => cnt[b.k] - cnt[a.k]).slice(0, 3);
+  const me = REACTS.find((x) => x.k === mineK);
+  return `<div class="rbar">${n ? `<button class="rsum" data-who="${w.id}"><span class="re">${top.map((x) => x.e).join('')}</span>${ar(n)}</button>` : '<span></span>'}
+    <button class="rbtn ${me ? 'on' : ''}" data-rx="${w.id}">${me ? `${me.e} ${me.t}` : '🙏 تفاعل'}</button></div>`;
+}
+function wireReacts() {
+  $$('[data-rx]').forEach((b) => b.onclick = (ev) => {
+    ev.stopPropagation(); $$('.rpick').forEach((x) => x.remove());
+    const id = b.dataset.rx; const w = S.wall.find((x) => x.id === id); const cur = w?.reacts?.[api.myUid()]?.t;
+    const p = document.createElement('div'); p.className = 'rpick';
+    p.innerHTML = REACTS.map((x, i) => `<button data-k="${x.k}" class="${cur === x.k ? 'on' : ''}" style="--d:${i * 35}ms" aria-label="${x.t}"><span>${x.e}</span><small>${x.t}</small></button>`).join('');
+    b.closest('.post').appendChild(p);
+    const close = () => { p.remove(); document.removeEventListener('click', close); }; setTimeout(() => document.addEventListener('click', close), 0);
+    $$('button', p).forEach((x) => x.onclick = async (e) => {
+      e.stopPropagation(); const k = x.dataset.k; const R = REACTS.find((y) => y.k === k); close(); vibrate(12);
+      const r = x.getBoundingClientRect(); burst(r.left + r.width / 2, r.top, 18);
+      const ok = await api.react(id, cur === k ? null : k); if (!ok) return toast('مقدرناش نسجّل تفاعلك');
+      if (cur !== k) toast(`${R.e} ${R.v}`);
+    });
+  });
+  $$('[data-who]').forEach((b) => b.onclick = () => {
+    const w = S.wall.find((x) => x.id === b.dataset.who); if (!w) return; const r = Object.values(w.reacts || {});
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = `<div class="box whobox"><h2>التفاعلات</h2>${REACTS.filter((x) => r.some((y) => y.t === x.k)).map((x) => `<div class="whog"><p><b>${x.e} ${x.t}</b> <small>${esc(x.v)}</small></p><div>${r.filter((y) => y.t === x.k).map((y) => `<span class="chip">${esc(first(y.n || ''))}</span>`).join('')}</div></div>`).join('')}<button class="btn ghost block" id="wcl" style="margin-top:12px">قفل</button></div>`;
+    document.body.appendChild(m); m.onclick = (e) => { if (e.target === m) m.remove(); }; $('#wcl', m).onclick = () => m.remove();
+  });
+}
 async function vWall(tabArg) {
   if (['verse', 'prayer', 'ask'].includes(tabArg)) S.wallTab = tabArg;
   const tab = S.wallTab; const list = S.wall.filter((w) => w.type === tab).sort((a, b) => b.at - a.at); const pr = prayedSet();
@@ -236,11 +266,10 @@ async function vWall(tabArg) {
     const anon = w.type === 'prayer'; const who = anon ? initialOf(w.name) : w.name;
     return `<article class="card post ${w.type}"><div class="who">${anon ? `<span class="av anon">${esc(who.replace('.', ''))}</span>` : avatar(w.name)}<div class="grow"><b>${esc(who)}</b><div class="sub" style="font-size:12px">${anon ? 'واحد من الأسرة، ' : ''}${timeAgo(w.at)}</div></div>${mine(w) ? `<button class="chip" data-del="${w.id}" aria-label="حذف">حذف</button>` : ''}</div>
     <p class="txt ${w.type === 'verse' ? 'verse-q' : ''}">${w.type === 'verse' ? '«' + esc(w.text) + '»' : esc(w.text)}</p>${w.ref ? `<p class="ref">${esc(w.ref)}</p>` : ''}${w.note ? `<p class="note">💭 ${esc(w.note)}</p>` : ''}
-    ${anon ? `<div class="foot"><span class="sub">${ar(w.prayed || 0)} صلّوا</span><button class="pray ${pr.has(w.id) ? 'did' : ''}" data-pray="${w.id}">${pr.has(w.id) ? 'صلّيت ✓' : '🙏 صلّيت'}</button></div>` : ''}</article>`;
+    ${!anon ? reactBar(w) : ''}${anon ? `<div class="foot"><span class="sub">${ar(w.prayed || 0)} صلّوا</span><button class="pray ${pr.has(w.id) ? 'did' : ''}" data-pray="${w.id}">${pr.has(w.id) ? 'صلّيت ✓' : '🙏 صلّيت'}</button></div>` : ''}</article>`;
   };
   const compose = {
-    verse: `<section class="card compose"><h3 class="ch3">اختار الآية اللي لمستك</h3><div id="vpick"></div>
-      <input class="inp" id="pnote" maxlength="200" placeholder="ليه لمستك؟ (اختياري)" style="margin-top:10px"><button class="btn primary block" id="psend" style="margin-top:10px">شارك الآية ✨</button></section>`,
+    verse: `<button class="card compose-cta" id="vnew"><span class="ei">✨</span><span class="grow"><b>شارك آية لمستك</b><small>اختار الآية من الكتاب، واكتب ليه لمستك</small></span><span class="plus">＋</span></button>`,
     prayer: `<blockquote class="vp-text pverse"><p>«وَصَلُّوا بَعْضُكُمْ لأَجْلِ بَعْضٍ، لِكَيْ تُشْفَوْا. طَلِبَةُ الْبَارِّ تَقْتَدِرُ كَثِيرًا فِي فِعْلِهَا»</p><cite>يعقوب ٥: ١٦</cite></blockquote><section class="card compose"><textarea id="ptext" maxlength="400" placeholder="اكتب طلبتك… وإحنا هنصلّي لك"></textarea><p class="hint" style="margin:6px 2px 0">🔒 اسمك مش هيظهر، هيظهر أول حرف منه بس.</p>
       <button class="btn primary block" id="psend" style="margin-top:10px">اطلب صلاة</button></section>`,
     ask: `<section class="card ask-cta"><div class="big">❓</div><h2>عندك سؤال أو محتاج تفسير لآية؟</h2><p class="sub">اسأل الخدام، والرد هيوصلك على الواتساب. سؤالك محدش بيشوفه غير الخدام.</p><button class="btn red block" id="ask">اسأل دلوقتي</button>
@@ -253,12 +282,8 @@ async function vWall(tabArg) {
     : `<div class="card" style="text-align:center"><p class="muted">لسه مفيش حاجة هنا… كن أول واحد يشارك 🤍</p></div>`}</div>${logos()}</div>`;
   $$('.seg button').forEach((b) => b.onclick = () => { location.hash = '#/wall/' + b.dataset.t; });
   if (tab === 'ask') { $('#ask').onclick = () => askModal(); return; }
-  let getVerse = null; if (tab === 'verse') getVerse = await versePicker($('#vpick'), {}, { keep: (S.vpWall = S.vpWall || {}) });
-  $('#psend').onclick = async () => {
-    if (tab === 'verse') {
-      const v = getVerse && getVerse(); if (!v || !v.text) return toast('اختار الآية الأول 🙂');
-      $('#psend').disabled = true; await api.post('verse', v.text, v.ref, $('#pnote').value.trim()); toast('اتشاركت ✨'); return;
-    }
+  if (tab === 'verse') { $('#vnew').onclick = () => verseModal(); wireReacts(); }
+  else $('#psend').onclick = async () => {
     const t = $('#ptext').value.trim(); if (t.length < 3) return toast('اكتب طلبتك الأول 🙂'); $('#psend').disabled = true; await api.post('prayer', t); toast('طلبتك وصلت… هنصلّي لك 🙏');
   };
   $$('[data-pray]').forEach((b) => b.onclick = async () => { const id = b.dataset.pray; const s = prayedSet(); if (s.has(id)) return; s.add(id); localStorage.setItem('la3rafo:prayed', JSON.stringify([...s])); vibrate(15); const r = b.getBoundingClientRect(); burst(r.left + r.width / 2, r.top, 30); await api.pray(id); });
@@ -407,7 +432,9 @@ function route() {
   $$('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.r === r || (r === 'read' && x.dataset.r === 'today') || (r === 'exam' && x.dataset.r === 'journey')));
   const v = { today: vToday, read: () => vRead(a, b), journey: () => vJourney(a), plan: vPlan, wall: () => vWall(a), me: vMe, khadem: () => vAdmin(a, b), exam: () => vExam(a), game: () => vGame(a), games: vGames }[r] || vToday;
   const same = S.lastRoute === location.hash; S.lastRoute = location.hash;
-  v(); if (!same && r !== 'journey' && r !== 'plan' && r !== 'read') scrollTo(0, 0);
+  const fail = (e) => { console.error(e); APP.innerHTML = `<div class="view">${topbar()}<section class="card empty"><div class="big">⚠️</div><h2>حصلت مشكلة في الصفحة دي</h2><p class="sub">ارجع للصفحة الرئيسية وجرّب تاني.</p><a class="btn primary block" href="#/today">الصفحة الرئيسية</a></section></div>`; };
+  try { const p = v(); if (p && p.catch) p.catch(fail); } catch (e) { fail(e); }
+  if (!same && r !== 'journey' && r !== 'plan' && r !== 'read') scrollTo(0, 0);
 }
 let rt; const pendK = new Set(); const rerender = (kinds) => () => { kinds.forEach((k) => pendK.add(k)); clearTimeout(rt); rt = setTimeout(() => { const ks = new Set(pendK); pendK.clear(); const r = (location.hash.split('/')[1] || 'today'); const sub = location.hash.split('/')[2]; if (r === 'khadem' && ['quiz', 'exams', 'word', 'asks', 'reports', 'game'].includes(sub)) return; if (S.me && ks.has(r) && !document.activeElement?.matches('input,textarea,select')) route(); }, 120); };
 on('users', (u) => { S.users = u; if (S.me) { const m = u.find((x) => x.phone === S.me.phone); if (m) S.me = m; } rerender(['today', 'journey', 'plan', 'me', 'khadem'])(); });

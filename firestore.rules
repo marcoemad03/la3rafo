@@ -42,8 +42,14 @@ service cloud.firestore {
         && request.resource.data.type in ['verse','prayer']
         && request.resource.data.text is string && request.resource.data.text.size() <= 1500
         && request.resource.data.prayed == 0;
-      allow update: if signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prayed'])
-        && request.resource.data.prayed == resource.data.prayed + 1;
+      allow update: if signedIn() && (
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prayed'])
+          && request.resource.data.prayed == resource.data.prayed + 1)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reacts'])
+          && request.resource.data.reacts.diff(resource.data.get('reacts', {})).affectedKeys().hasOnly([request.auth.uid])
+          && (!(request.auth.uid in request.resource.data.reacts)
+              || request.resource.data.reacts[request.auth.uid].t in ['amen','love','fire','light','strong','tears']))
+      );
       allow delete: if isServant() || (signedIn() && resource.data.uid == request.auth.uid);
     }
     match /admins/{uid} {
