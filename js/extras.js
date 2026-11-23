@@ -62,6 +62,20 @@ export async function askModal(pre) {
   };
 }
 
+// share a verse: picker in its own sheet, so the wall itself stays light
+export async function verseModal() {
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="box ask-box"><h2>✨ شارك آية لمستك</h2><div id="vmp"><p class="muted" style="text-align:center">بيحمّل الكتاب…</p></div>
+    <input class="inp" id="vmn" maxlength="200" placeholder="ليه لمستك؟ (اختياري)" style="margin-top:10px">
+    <div class="actions"><button class="btn primary" id="vms">شارك ✨</button><button class="btn ghost" id="vmc">إلغاء</button></div></div>`;
+  document.body.appendChild(m); const close = () => m.remove(); m.onclick = (e) => { if (e.target === m) close(); }; $('#vmc', m).onclick = close;
+  let get = null; try { get = await versePicker($('#vmp', m), {}, { keep: (S.vpWall = S.vpWall || {}) }); } catch (e) { $('#vmp', m).innerHTML = '<p class="muted">مقدرناش نحمّل الكتاب، جرّب تاني.</p>'; }
+  $('#vms', m).onclick = async () => {
+    const v = get && get(); if (!v || !v.text) return toast('اختار الآية الأول 🙂');
+    $('#vms', m).disabled = true; await api.post('verse', v.text, v.ref, $('#vmn', m).value.trim()); close(); toast('اتشاركت ✨'); burst(innerWidth / 2, innerHeight / 2, 50);
+  };
+}
+
 // "my questions" list for the participant
 export function myQuestionsHTML(list) {
   if (!list || !list.length) return '<p class="muted" style="text-align:center;margin:10px 0 0">لسه مسألتش أي سؤال.</p>';

@@ -24,7 +24,8 @@ export function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p); } 
 export function meU() { return S.users.find((x) => x.phone === S.me?.phone) || S.me; }
 export function myRead() { const u = S.users.find((x) => x.phone === S.me?.phone) || S.me; return new Set((u && u.readDays) || []); }
 export function greeting() { const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Cairo', hour: 'numeric', hour12: false }).format(new Date()); return h < 12 ? 'صباح الخير' : h < 17 ? 'نهارك سعيد' : 'مساء الخير'; }
-export async function loadText() { if (!S.text) S.text = await (await fetch('data/text.json')).json(); return S.text; }
+let textP = null; // one shared download, however many views ask at once
+export async function loadText() { if (S.text) return S.text; if (!textP) textP = fetch('data/text.json').then((r) => r.json()).then((t) => (S.text = t)).catch((e) => { textP = null; throw e; }); return textP; }
 export const ICON = {
   ear: '<svg viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
