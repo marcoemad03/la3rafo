@@ -570,3 +570,45 @@ body:not(.reading) .selbar{bottom:calc(var(--nav-h) + var(--safe-b) + 24px)}
 .wa-btn{background:#25D366!important;color:#fff!important;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .honor li .av{flex:none}
 .gend .actions .btn{white-space:nowrap}
+/* ---- games v2: rainbow, order, verse puzzle, match, archive ---- */
+.games-link{display:block;text-align:center;margin:-4px 0 12px;font-weight:700;font-size:14px;color:var(--navy);text-decoration:underline;text-underline-offset:4px}
+.rainbow{display:block;width:100%;max-width:300px;margin:0 auto;height:auto}.rainbow.big{max-width:330px;margin-bottom:4px}
+.rainbow path{transition:stroke .6s ease}.rainbow path.fresh{animation:rpop .9s var(--spring)}
+.rainbow .cloud ellipse{fill:#fff;stroke:#e6dcc4;stroke-width:1.5}
+@keyframes rpop{0%{stroke-width:4;opacity:.3}60%{stroke-width:17}100%{stroke-width:12;opacity:1}}
+.rtrack{margin:4px 0 8px}.rtrack .rainbow{max-width:220px}
+.rdots{display:flex;justify-content:center;gap:6px;margin-top:-6px}
+.rdots i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:800;background:#fff;border:2px solid #e3dccb;color:var(--muted)}
+.rdots i.cur{border-color:var(--c);color:var(--c);transform:scale(1.15)}.rdots i.ok{background:var(--c);border-color:var(--c);color:#fff}.rdots i.no{background:#fff;border-color:var(--c);color:var(--c);opacity:.7}
+.game.rainbow .gq{border-top:5px solid var(--c)}
+/* order */
+.obuild{display:grid;gap:8px}.oslot{display:flex;align-items:center;gap:8px;min-height:52px;border-radius:14px;border:2px dashed #e3d3ad;padding:4px 8px;background:#fffdf7}
+.oslot .on{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--navy);color:#fff;font-weight:800;font-size:13px}
+.oslot i{font-style:normal;color:#b9a77f;font-size:13px}.oslot.full{border-style:solid;border-color:var(--line);background:#fff}.oslot.lock{border-color:var(--ok);background:#eef8f2}
+.oit{flex:1;text-align:right;background:none;border:none;font:inherit;font-weight:700;font-size:15px;color:var(--ink);padding:8px 4px;line-height:1.6}
+.opool{display:grid;gap:8px;margin-top:14px}.oit.free{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:0 4px 12px -8px rgba(2,48,74,.35)}
+.oslot.lock .oit{color:var(--ok)}
+/* verse puzzle */
+.vbuild{display:flex;flex-wrap:wrap;gap:6px;min-height:58px;padding:10px;border-radius:16px;background:#fff8e6;border:1.5px solid #ecd08f}
+.vpool{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.wt{font-family:Amiri,serif;font-size:19px;font-weight:700;padding:6px 12px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);box-shadow:0 3px 0 #e6d6ae;line-height:1.5}
+.wt.slot{min-width:46px;height:40px;border-style:dashed;box-shadow:none;background:transparent}
+.wt.placed{background:#fff;border-color:var(--gold)}.wt.placed.lock{border-color:var(--ok);background:#eef8f2;color:var(--ok);box-shadow:0 3px 0 #bfe3cf}
+.vpool .wt:active,.opool .oit:active{transform:translateY(2px);box-shadow:none}
+/* match */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcol{display:grid;gap:8px;align-content:start}
+.mit{min-height:56px;border-radius:14px;border:2px solid var(--line);background:#fff;font:inherit;font-weight:700;font-size:14px;line-height:1.5;padding:6px 8px;color:var(--ink);transition:transform .15s}
+.mit.sel{border-color:var(--navy);background:#e9f1f6;transform:scale(1.03)}
+.mit.ok{border-color:var(--mc);background:color-mix(in srgb,var(--mc) 14%,#fff);color:color-mix(in srgb,var(--mc) 75%,#000);pointer-events:none}
+.mit.bad{border-color:var(--red);background:#fdeeee;animation:shake .4s}
+/* archive */
+.gitem{display:flex!important;align-items:center;gap:12px}
+.gitem .gday{flex:none;width:52px;height:56px;border-radius:14px;background:var(--navy);color:#FDF3D8;display:grid;place-items:center;line-height:1.1}
+.gitem .gday small{font-size:11px;color:#e9d6a8}.gitem .gday b{font-size:22px}
+.gitem .grow b{display:block;color:var(--navy);font-size:16px}.gitem .grow small{display:block;font-size:12px;color:var(--muted)}
+.gitem .gsc{font-weight:800;font-size:20px;color:var(--ok)}.gitem .gsc small{font-size:13px;color:var(--muted)}
+.gitem .gplay{background:var(--gold2);color:#2a1d02;font-weight:800;padding:6px 14px;border-radius:99px;font-size:13px}
+.gitem.played{opacity:.9}
+.game .rhead .chip{flex:none}
+.rainbow path{fill:none!important}
+.gq .qexp .meh{color:#9a6a12;font-weight:800;font-size:15.5px;margin:0 0 4px}
