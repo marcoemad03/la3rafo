@@ -240,7 +240,7 @@ async function vWall(tabArg) {
   const compose = {
     verse: `<section class="card compose"><h3 class="ch3">اختار الآية اللي لمستك</h3><div id="vpick"></div>
       <input class="inp" id="pnote" maxlength="200" placeholder="ليه لمستك؟ (اختياري)" style="margin-top:10px"><button class="btn primary block" id="psend" style="margin-top:10px">شارك الآية ✨</button></section>`,
-    prayer: `<section class="card compose"><textarea id="ptext" maxlength="400" placeholder="اكتب طلبتك… وإحنا هنصلّي لك"></textarea><p class="hint" style="margin:6px 2px 0">🔒 اسمك مش هيظهر، هيظهر أول حرف منه بس.</p>
+    prayer: `<blockquote class="vp-text pverse"><p>«وَصَلُّوا بَعْضُكُمْ لأَجْلِ بَعْضٍ، لِكَيْ تُشْفَوْا. طَلِبَةُ الْبَارِّ تَقْتَدِرُ كَثِيرًا فِي فِعْلِهَا»</p><cite>يعقوب ٥: ١٦</cite></blockquote><section class="card compose"><textarea id="ptext" maxlength="400" placeholder="اكتب طلبتك… وإحنا هنصلّي لك"></textarea><p class="hint" style="margin:6px 2px 0">🔒 اسمك مش هيظهر، هيظهر أول حرف منه بس.</p>
       <button class="btn primary block" id="psend" style="margin-top:10px">اطلب صلاة</button></section>`,
     ask: `<section class="card ask-cta"><div class="big">❓</div><h2>عندك سؤال أو محتاج تفسير لآية؟</h2><p class="sub">اسأل الخدام، والرد هيوصلك على الواتساب. سؤالك محدش بيشوفه غير الخدام.</p><button class="btn red block" id="ask">اسأل دلوقتي</button>
       <p class="hint" style="margin-top:8px">ممكن كمان وإنت بتقرا: دوس على الآية واختار «❓ اسأل».</p></section><h3 class="ch3" style="margin:16px 4px 8px">أسئلتي</h3>`,
