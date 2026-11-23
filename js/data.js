@@ -125,6 +125,7 @@ function demoImpl() {
       u.readAt = { ...(u.readAt || {}), [n]: Date.now() }; save(); all();
     },
     async answerChq(key, c, t) { const u = me(); u.quiz = { ...(u.quiz || {}), [key]: { c, t } }; save(); all(); },
+    async resetGame(phone, n) { const u = memo.users.find((x) => x.phone === phone); if (u && u.quiz) { delete u.quiz[`game_${n}`]; save(); all(); } return true; },
     async saveGame(n, c, t, d) { const u = me(); const k = `game_${n}`; if ((u.quiz || {})[k]) return false; u.quiz = { ...(u.quiz || {}), [k]: { c, t, d, at: Date.now() } }; save(); all(); return true; },
     myUid,
     async post(type, text, ref, note) { const u = me(); const anon = type === 'prayer'; memo.wall.push({ id: 'w' + Date.now(), type, text, ref: ref || '', note: note || '', name: anon ? initialOf(u.name) : u.name, phone: anon ? '' : u.phone, uid: myUid(), at: Date.now(), prayed: 0 }); save(); all(); },
@@ -202,6 +203,7 @@ async function firebaseImpl() {
       await F.updateDoc(F.doc(db, 'users', myPhone), on ? { readDays: F.arrayUnion(n), [`readAt.${n}`]: F.serverTimestamp(), lastSeen: F.serverTimestamp() } : { readDays: F.arrayRemove(n) });
     },
     async answerChq(key, c, t) { await F.updateDoc(F.doc(db, 'users', myPhone), { [`quiz.${key}`]: { c, t }, lastSeen: F.serverTimestamp() }); },
+    async resetGame(phone, n) { try { await F.updateDoc(F.doc(db, 'users', phone), { [`quiz.game_${n}`]: F.deleteField() }); return true; } catch (e) { console.warn(e); return false; } },
     async saveGame(n, c, t, d) { if ((me()?.quiz || {})[`game_${n}`]) return false; await F.updateDoc(F.doc(db, 'users', myPhone), { [`quiz.game_${n}`]: { c, t, d, at: Date.now() }, lastSeen: F.serverTimestamp() }); return true; },
     myUid: () => uid,
     async post(type, text, ref, note) { const u = me(); const anon = type === 'prayer'; await F.addDoc(F.collection(db, 'wall'), { type, text, ref: ref || '', note: note || '', name: anon ? initialOf(u.name) : u.name, phone: anon ? '' : u.phone, uid, at: F.serverTimestamp(), prayed: 0 }); },
