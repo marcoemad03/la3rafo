@@ -16,6 +16,9 @@ service cloud.firestore {
         && request.resource.data.phone == resource.data.phone;
       allow delete: if isServant();
     }
+    match /bonus/{phone} {
+      allow read, write: if isServant();
+    }
     match /days/{day} { allow read: if signedIn(); allow write: if isServant(); }
     match /chq/{key} { allow read: if signedIn(); allow write: if isServant(); }
     match /exams/{id} { allow read: if signedIn(); allow write: if isServant(); }
