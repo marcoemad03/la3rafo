@@ -38,8 +38,9 @@ function badEntries(u, today = todayCairo()) {
   const days = (u.readDays || []).filter((n) => isFutureDay(n, today) || early(ra[n], DATE_OF[n]));
   const at = Object.keys(ra).filter((k) => isFutureDay(+k, today) || early(ra[k], DATE_OF[+k]));
   const quiz = Object.entries(u.quiz || {}).filter(([k, v]) => {
-    if (k.startsWith('game_')) { const n = +k.slice(5); return isFutureDay(n, today) || early(v && v.at, DATE_OF[n]); }
-    const dt = CH_DATE[k]; return !!dt && (dt > today || early(v && v.at, dt));
+    // games and quizzes are stamped by the phone's clock, so only the day itself decides
+    if (k.startsWith('game_')) return isFutureDay(+k.slice(5), today);
+    const dt = CH_DATE[k]; return !!dt && dt > today;
   }).map(([k]) => k);
   return { days, at, quiz, any: days.length + at.length + quiz.length > 0 };
 }

@@ -54,7 +54,8 @@ const clock = (s) => `${ar(Math.floor(s / 60))}:${ar(String(s % 60).padStart(2, 
 // ---------------------------------------------------------------- home button
 export function pastGames() { const t = todayCairo(); return DAYS.filter((d) => d.date <= t && gameFor(d.n)); }
 export function gameCTA(n) {
-  const past = pastGames().filter((d) => d.n !== n); const more = past.length ? `<a class="games-link" href="#/games">🕹️ الألعاب اللي فاتت (${ar(past.length)})</a>` : '';
+  const past = pastGames().filter((d) => d.n !== n); const left = past.filter((d) => !(meU().quiz || {})[gkey(d.n)]).length;
+  const more = past.length ? `<a class="games-link" href="#/games">🕹️ ${left === 1 ? 'فيه لعبة لسه ملعبتهاش' : left === 2 ? 'فيه لعبتين لسه ملعبتهمش' : left ? `فيه ${ar(left)} ألعاب لسه ملعبتهمش` : 'كل الألعاب (لعبتهم كلهم ✓)'}</a>` : '';
   const g = gameFor(n); if (!g) return more;
   const mine = (meU().quiz || {})[gkey(n)]; const ps = players(n).length;
   return `<a class="card game-cta ${mine ? 'played' : ''}" href="#/game/${n}"><span class="gi">🎮</span><span class="grow"><b>لعبة النهارده</b><small>${mine ? `لعبتها ✓ جبت ${ar(mine.c)} من ${ar(mine.t)}، شوف ترتيبك` : `${esc(g.title)}، ${ar(g.stations.length)} محطات${ps ? `، ${ar(ps)} لعبوها` : ''}`}</small></span>${mine ? '<span class="gbadge">🏆</span>' : '<span class="gplay">العب</span>'}</a>${more}`;
@@ -78,10 +79,9 @@ export function vGame(arg) {
   if (d && d.date > todayCairo()) { APP.innerHTML = `<div class="view">${head}<section class="card empty"><div class="big">⏳</div><h2>لسه يومها مجاش</h2><p class="sub">اللعبة دي بتفتح يوم ${fmtDate(d.date, false)}.</p></section></div>`; return; }
   if (!g) { APP.innerHTML = `<div class="view">${head}<section class="card empty"><div class="big">🎮</div><h2>لسه مفيش لعبة لليوم ده</h2><p class="sub">الخدام بيجهزوها… ارجع تاني بعد شوية.</p><a class="btn primary block" href="#/today">رجوع</a></section></div>`; return; }
   const mine = (meU().quiz || {})[gkey(n)];
-  if (mine && !S.gReplay) return board(d, g, head, mine);
-  S.gReplay = false;
+  if (mine) return board(d, g, head, mine);
   APP.innerHTML = `<div class="view game">${head}<section class="card gintro">${g.theme === 'rainbow' ? rainbow(0, g.stations.length, true) : '<div class="gwave"><span class="gboat">🛶</span></div>'}<h1>${esc(g.title)}</h1><p class="sub">${esc(g.intro || '')}</p>
-    <ul class="rules"><li>${ar(g.stations.length)} ${g.theme === 'rainbow' ? 'مراحل' : 'محطات'} على قراية اليوم ${ar(n)}: ${otLabel(d)}${d.nt ? '، ' + ntLabel(d) : ''}</li><li>${g.stations.some((x) => ['order', 'verse', 'match'].includes(x.type)) ? 'النجمة بتتحسب لو حلّيت المرحلة من أول محاولة' : 'كل إجابة بتتصحح على طول'}</li><li>الوقت بيتحسب، ولو اتساوت النجوم الأسرع بيسبق</li>${mine ? '<li><b>إنت لعبتها قبل كده، المرة دي للتسلية ومش هتتحسب</b></li>' : '<li>بتتحسب أول مرة بس</li>'}</ul>
+    <ul class="rules"><li>${ar(g.stations.length)} ${g.theme === 'rainbow' ? 'مراحل' : 'محطات'} على قراية اليوم ${ar(n)}: ${otLabel(d)}${d.nt ? '، ' + ntLabel(d) : ''}</li><li>${g.stations.some((x) => ['order', 'verse', 'match'].includes(x.type)) ? 'النجمة بتتحسب لو حلّيت المرحلة من أول محاولة' : 'كل إجابة بتتصحح على طول'}</li><li>الوقت بيتحسب، ولو اتساوت النجوم الأسرع بيسبق</li>${mine ? '<li><b>إنت لعبتها قبل كده، المرة دي للتسلية ومش هتتحسب</b></li>' : '<li>بتتلعب مرة واحدة بس، فركّز 🙂</li>'}</ul>
     <div class="actions"><button class="btn red" id="ggo">يلا نبدأ 🚀</button><a class="btn ghost" href="#/read/${n}">اقرا الأول 📖</a></div></section></div>`;
   $('#ggo').onclick = () => play(d, g, head, !mine);
 }
@@ -207,6 +207,5 @@ function board(d, g, head, mine) {
   APP.innerHTML = `<div class="view game">${head}<section class="card gend">${g.theme === 'rainbow' ? rainbow(7, 7, true) : `<div class="big">${mine.c === mine.t ? '🏆' : '🕊️'}</div>`}<h1>${esc(g.title)}</h1>
     <div class="gstars">${Array.from({ length: mine.t }, (_, k) => `<i class="${k < mine.c ? 'on' : ''}">★</i>`).join('')}</div>
     <p class="gres">نتيجتك: <b>${ar(mine.c)}</b> من ${ar(mine.t)} في <b>${clock(mine.d || 0)}</b></p>
-    <div class="actions"><button class="btn primary" id="grp">العب تاني للتسلية</button><a class="btn ghost" href="#/games">كل الألعاب</a></div></section>${boardHTML(d.n, g)}</div>`;
-  $('#grp').onclick = () => { S.gReplay = true; vGame(d.n); };
+    <p class="sub">اللعبة بتتلعب مرة واحدة بس 🔒</p><div class="actions"><a class="btn ghost" href="#/games">كل الألعاب</a></div></section>${boardHTML(d.n, g)}</div>`;
 }
