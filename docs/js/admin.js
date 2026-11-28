@@ -61,6 +61,8 @@ function home(el) {
   <section class="card"><h2>محتاجين متابعة</h2><p class="sub">فاتهم يومين أو أكتر، أو بقالهم ٣ أيام مقروش</p>
     ${watch.length ? watch.map(({ u, s }) => `<div class="member">${avatar(u.name, 34)}<span class="grow"><b>${esc(u.name)}</b><br><small class="muted">فاته ${ar(s.missed)} يوم${s.lastAt ? `، آخر قراءة ${fmtDate(cairoDate(s.lastAt), false)}` : '، لسه مقراش'}</small></span>${waBtn(u, msgMissed(u, s))}</div>`).join('') : '<p class="muted" style="margin-top:8px">الكل ماشي كويس 👏</p>'}</section>
   <section class="card"><h2>الأكثر انتظامًا</h2>${best.map(({ u, s }, i) => `<div class="member"><span class="rkk">${ar(i + 1)}</span>${avatar(u.name, 30)}<span class="grow">${esc(u.name)}</span><b>${ar(s.consistency)}٪</b></div>`).join('')}</section>`;
+  el.insertAdjacentHTML('beforeend', `<section class="card"><h2>🔒 الأيام اللي لسه معادها مجاش</h2><p class="sub">الأصحاحات بتتفتح في يومها بس. أي قراية أو سؤال اتسجل قبل معاده بيتمسح من الترتيب والجبل والسجل، وده بيحصل لوحده لما خادم يفتح اللوحة.</p><button class="btn ghost block" id="purgeF">نضّف السجلات دلوقتي</button></section>`);
+  $('#purgeF', el).onclick = async (e) => { e.currentTarget.disabled = true; const n = await api.purgeFuture(); toast(n ? `اتمسحت قرايات مبكرة من سجل ${ar(n)} ${n > 2 && n < 11 ? 'أشخاص' : 'شخص'} ✓` : 'كله نضيف، مفيش قرايات قبل معادها ✓'); e.currentTarget.disabled = false; };
 }
 const kpi = (v, l, p) => `<div class="kpi"><b>${v}</b><span>${l}</span>${p != null ? `<i style="--p:${p}%"></i>` : ''}</div>`;
 const waBtn = (u, m) => `<a class="wa" target="_blank" rel="noopener" href="https://wa.me/${wa(u.phone)}?text=${encodeURIComponent(m)}">${ICON.wa} فكّره</a>`;

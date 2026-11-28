@@ -1,6 +1,6 @@
 // طبقة البيانات: Firebase لو الإعدادات موجودة، وإلا وضع تجريبي على الجهاز
 import { firebaseConfig } from './firebase-config.js';
-import { DAYS, todayCairo, dueDays } from './plan.js';
+import { DAYS, todayCairo, dueDays, passages } from './plan.js';
 
 const listeners = { users: new Set(), wall: new Set(), days: new Set(), chq: new Set(), exams: new Set(), myq: new Set() };
 const emit = (k, v) => listeners[k].forEach((f) => { try { f(v); } catch (e) { console.error(e); } });
@@ -23,7 +23,32 @@ try { navigator.storage && navigator.storage.persist && navigator.storage.persis
 export const normPhone = (p) => String(p || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d]/g, '').replace(/^(20|0020)/, '0');
 export const validPhone = (p) => /^01[0125]\d{8}$/.test(normPhone(p));
 const ms = (v) => (v && v.toMillis ? v.toMillis() : (typeof v === 'number' ? v : (v && v.seconds ? v.seconds * 1000 : null)));
-function normUser(u) { const ra = {}; Object.entries(u.readAt || {}).forEach(([k, v]) => { const m = ms(v); if (m) ra[k] = m; }); return { ...u, readAt: ra, readDays: u.readDays || [], quiz: u.quiz || {} }; }
+// ---- قفل الأيام اللي معادها لسه مجاش ----
+const DATE_OF = Object.fromEntries(DAYS.map((d) => [d.n, d.date]));
+const CH_DATE = {}; DAYS.forEach((d) => passages(d).forEach((p) => { const k = `${p.book}_${p.ch}`; if (!CH_DATE[k] || d.date < CH_DATE[k]) CH_DATE[k] = d.date; }));
+const fmtC = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' });
+const dayOfMs = (t) => fmtC.format(new Date(t));
+// demo with ?date= : stamp actions on the simulated day, not the real clock
+const nowSim = () => { const t = todayCairo(); return dayOfMs(Date.now()) === t ? Date.now() : Date.parse(t + 'T10:00:00Z'); };
+export const isFutureDay = (n, today = todayCairo()) => !DATE_OF[n] || DATE_OF[n] > today;
+// a record doesn't count if its day hasn't come yet, or it was stamped before its own day
+function badEntries(u, today = todayCairo()) {
+  const early = (t, date) => { const m = ms(t); return !!(m && dayOfMs(m) < date); };
+  const ra = u.readAt || {};
+  const days = (u.readDays || []).filter((n) => isFutureDay(n, today) || early(ra[n], DATE_OF[n]));
+  const at = Object.keys(ra).filter((k) => isFutureDay(+k, today) || early(ra[k], DATE_OF[+k]));
+  const quiz = Object.entries(u.quiz || {}).filter(([k, v]) => {
+    if (k.startsWith('game_')) { const n = +k.slice(5); return isFutureDay(n, today) || early(v && v.at, DATE_OF[n]); }
+    const dt = CH_DATE[k]; return !!dt && (dt > today || early(v && v.at, dt));
+  }).map(([k]) => k);
+  return { days, at, quiz, any: days.length + at.length + quiz.length > 0 };
+}
+function normUser(u) {
+  const b = badEntries(u); const bad = new Set(b.days); const badAt = new Set(b.at); const badQ = new Set(b.quiz);
+  const ra = {}; Object.entries(u.readAt || {}).forEach(([k, v]) => { const m = ms(v); if (m && !badAt.has(k)) ra[k] = m; });
+  const quiz = {}; Object.entries(u.quiz || {}).forEach(([k, v]) => { if (!badQ.has(k)) quiz[k] = v; });
+  return { ...u, readAt: ra, readDays: (u.readDays || []).filter((n) => !bad.has(n)), quiz };
+}
 // ---- exams: 4 question types (mcq / tf / fill / essay)
 export const QTYPES = { mcq: 'اختياري', tf: 'صح وخطأ', fill: 'أكمل', essay: 'مقالي' };
 // normalize Arabic for comparing "fill the blank" answers
@@ -129,13 +154,15 @@ function demoImpl() {
     },
     async logout() { store.del('me'); },
     async setRead(n, on) {
+      if (on && isFutureDay(n)) throw new Error('future');
       const u = me(); if (!u) return; const s = new Set(u.readDays);
       on ? s.add(n) : s.delete(n); u.readDays = [...s].sort((a, b) => a - b);
-      u.readAt = { ...(u.readAt || {}), [n]: Date.now() }; save(); all();
+      u.readAt = { ...(u.readAt || {}), [n]: nowSim() }; save(); all();
     },
-    async answerChq(key, c, t) { const u = me(); u.quiz = { ...(u.quiz || {}), [key]: { c, t } }; save(); all(); },
+    async answerChq(key, c, t) { if ((CH_DATE[key] || '') > todayCairo()) return; const u = me(); u.quiz = { ...(u.quiz || {}), [key]: { c, t, at: nowSim() } }; save(); all(); },
+    async purgeFuture() { let n = 0; memo.users.forEach((u) => { const b = badEntries(u); if (!b.any) return; n++; u.readDays = (u.readDays || []).filter((x) => !b.days.includes(x)); b.at.forEach((k) => { delete u.readAt[k]; }); b.quiz.forEach((k) => { delete u.quiz[k]; }); }); if (n) { save(); all(); } return n; },
     async resetGame(phone, n) { const u = memo.users.find((x) => x.phone === phone); if (u && u.quiz) { delete u.quiz[`game_${n}`]; save(); all(); } return true; },
-    async saveGame(n, c, t, d) { const u = me(); const k = `game_${n}`; if ((u.quiz || {})[k]) return false; u.quiz = { ...(u.quiz || {}), [k]: { c, t, d, at: Date.now() } }; save(); all(); return true; },
+    async saveGame(n, c, t, d) { const u = me(); const k = `game_${n}`; if ((u.quiz || {})[k]) return false; u.quiz = { ...(u.quiz || {}), [k]: { c, t, d, at: nowSim() } }; save(); all(); return true; },
     myUid,
     async post(type, text, ref, note) { const u = me(); const anon = type === 'prayer'; memo.wall.push({ id: 'w' + Date.now(), type, text, ref: ref || '', note: note || '', name: anon ? initialOf(u.name) : u.name, phone: anon ? '' : u.phone, uid: myUid(), at: Date.now(), prayed: 0 }); save(); all(); },
     async pray(id) { const w = memo.wall.find((x) => x.id === id); if (w) { w.prayed = (w.prayed || 0) + 1; save(); all(); } },
@@ -179,10 +206,24 @@ async function firebaseImpl() {
   const cred = auth.currentUser ? { user: auth.currentUser } : await A.signInAnonymously(auth);
   const uid = cred.user.uid;
   let users = []; let myPhone = store.get('me', null);
+  let rawUsers = []; let amServant = false; const purged = new Set();
+  // wipe records of days that haven't come yet: each person cleans their own doc, a servant cleans everyone
+  async function purgeRaw(list, force) {
+    let n = 0;
+    for (const u of list) {
+      const b = badEntries(u); if (!b.any) continue;
+      if (!(u.phone === myPhone || amServant)) continue;
+      if (!force && purged.has(u.phone)) continue; purged.add(u.phone);
+      const upd = {}; if (b.days.length) upd.readDays = F.arrayRemove(...b.days);
+      b.at.forEach((k) => { upd[`readAt.${k}`] = F.deleteField(); }); b.quiz.forEach((k) => { upd[`quiz.${k}`] = F.deleteField(); });
+      try { await F.updateDoc(F.doc(db, 'users', u.phone), upd); n++; } catch (e) { console.warn('purge', u.phone, e); }
+    }
+    return n;
+  }
   const subs = [];
   function startSubs() {
     if (subs.length) return;
-    subs.push(F.onSnapshot(F.collection(db, 'users'), (s) => { users = s.docs.map((d) => normUser({ phone: d.id, ...d.data() })); emit('users', users); }));
+    subs.push(F.onSnapshot(F.collection(db, 'users'), (s) => { rawUsers = s.docs.map((d) => ({ phone: d.id, ...d.data() })); users = rawUsers.map(normUser); emit('users', users); purgeRaw(rawUsers, false); }));
     subs.push(F.onSnapshot(F.query(F.collection(db, 'wall'), F.orderBy('at', 'desc'), F.limit(150)), (s) => {
       emit('wall', s.docs.map((d) => { const x = d.data(); return { id: d.id, ...x, at: ms(x.at) || Date.now() }; }));
     }));
@@ -210,9 +251,11 @@ async function firebaseImpl() {
     },
     async logout() { store.del('me'); myPhone = null; },
     async setRead(n, on) {
+      if (on && isFutureDay(n)) throw new Error('future');
       await F.updateDoc(F.doc(db, 'users', myPhone), on ? { readDays: F.arrayUnion(n), [`readAt.${n}`]: F.serverTimestamp(), lastSeen: F.serverTimestamp() } : { readDays: F.arrayRemove(n) });
     },
-    async answerChq(key, c, t) { await F.updateDoc(F.doc(db, 'users', myPhone), { [`quiz.${key}`]: { c, t }, lastSeen: F.serverTimestamp() }); },
+    async answerChq(key, c, t) { if ((CH_DATE[key] || '') > todayCairo()) return; await F.updateDoc(F.doc(db, 'users', myPhone), { [`quiz.${key}`]: { c, t, at: Date.now() }, lastSeen: F.serverTimestamp() }); },
+    async purgeFuture() { return purgeRaw(rawUsers, true); },
     async resetGame(phone, n) { try { await F.updateDoc(F.doc(db, 'users', phone), { [`quiz.game_${n}`]: F.deleteField() }); return true; } catch (e) { console.warn(e); return false; } },
     async saveGame(n, c, t, d) { if ((me()?.quiz || {})[`game_${n}`]) return false; await F.updateDoc(F.doc(db, 'users', myPhone), { [`quiz.game_${n}`]: { c, t, d, at: Date.now() }, lastSeen: F.serverTimestamp() }); return true; },
     myUid: () => uid,
@@ -220,8 +263,8 @@ async function firebaseImpl() {
     async pray(id) { await F.updateDoc(F.doc(db, 'wall', id), { prayed: F.increment(1) }); },
     async react(id, k) { try { await F.updateDoc(F.doc(db, 'wall', id), { [`reacts.${uid}`]: k ? { t: k, n: me().name } : F.deleteField() }); return true; } catch (e) { console.warn(e); return false; } },
     async removePost(id) { await F.deleteDoc(F.doc(db, 'wall', id)); },
-    async isServant() { try { return (await F.getDoc(F.doc(db, 'admins', uid))).exists(); } catch (e) { return false; } },
-    async unlock(code) { try { await F.setDoc(F.doc(db, 'admins', uid), { code, phone: myPhone || '', at: F.serverTimestamp() }); return true; } catch (e) { return false; } },
+    async isServant() { try { const ok = (await F.getDoc(F.doc(db, 'admins', uid))).exists(); if (ok && !amServant) { amServant = true; purgeRaw(rawUsers, false); } return ok; } catch (e) { return false; } },
+    async unlock(code) { try { await F.setDoc(F.doc(db, 'admins', uid), { code, phone: myPhone || '', at: F.serverTimestamp() }); amServant = true; purgeRaw(rawUsers, false); return true; } catch (e) { return false; } },
     async setCode(code) { try { await F.setDoc(F.doc(db, 'secrets', 'servants'), { code }); } catch (e) { return false; } return this.unlock(code); },
     async saveDay(n, data) { await F.setDoc(F.doc(db, 'days', String(n)), { ...data, at: F.serverTimestamp() }, { merge: true }); },
     async saveChq(key, questions) { if (questions.length) await F.setDoc(F.doc(db, 'chq', key), { questions, at: F.serverTimestamp() }); else await F.deleteDoc(F.doc(db, 'chq', key)); },
