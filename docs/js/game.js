@@ -31,7 +31,27 @@ export const GAMES = {
       { title: 'الوعد الأخير', type: 'verse', q: 'رتّب كلمات الآية، وكمّل القوس 🌈', answer: 'فمتى كانت القوس في السحاب أبصرها لأذكر ميثاقا أبديا', explain: 'تكوين ٩: ١٦' },
     ],
   },
+  12: {
+    title: 'رحلة أبرام 🐪', theme: 'journey', intro: 'ربنا قال لأبرام «اذهب»… فخرج وهو مش عارف رايح فين. اركب الجمل وعدّي محطات الرحلة من حاران لحد أرض الموعد!',
+    stations: [
+      { emoji: '🏜️', title: 'من حاران', type: 'mcq', q: 'كان عند أبرام كام سنة لما خرج من حاران؟', options: ['٥٠', '٦٠', '٧٥', '١٠٠'], answer: 2, explain: '«وَكَانَ أَبْرَامُ ابْنَ خَمْسٍ وَسَبْعِينَ سَنَةً لَمَّا خَرَجَ مِنْ حَارَانَ» (تك ١٢: ٤)' },
+      { emoji: '🧳', title: 'مين معاه؟', type: 'match', q: 'وصّل كل اسم بعلاقته بأبرام', answer: [{ a: 'ساراي', b: 'امرأته' }, { a: 'لوط', b: 'ابن أخيه' }, { a: 'فرعون', b: 'ملك مصر' }], explain: '«فَأَخَذَ أَبْرَامُ سَارَايَ امْرَأَتَهُ، وَلُوطًا ابْنَ أَخِيهِ» (تك ١٢: ٥)' },
+      { emoji: '🌳', title: 'الوعد', type: 'verse', q: 'رتّب كلمات الوعد', answer: 'فأجعلك أمة عظيمة وأباركك وأعظم اسمك وتكون بركة', explain: 'تكوين ١٢: ٢' },
+      { emoji: '🔥', title: 'في كل مكان', type: 'fill', q: 'في شكيم وفي الجبل اللي شرقي بيت إيل، أبرام بنى هناك …… للرب', answer: 'مذبح / مذبحا / المذبح', explain: '«فَبَنَى هُنَاكَ مَذْبَحًا لِلرَّبِّ وَدَعَا بِاسْمِ الرَّبِّ» (تك ١٢: ٨)' },
+      { emoji: '🗺️', title: 'رتّب الرحلة', type: 'order', q: 'رتّب محطات أبرام زي ما جت في الأصحاح', answer: ['خرج من حاران', 'شكيم عند بلوطة مورة', 'الجبل شرقي بيت إيل', 'ارتحل نحو الجنوب', 'نزل مصر بسبب الجوع'], explain: 'تكوين ١٢: ٤، ٦، ٨، ٩، ١٠' },
+      { emoji: '🏛️', title: 'صح ولا غلط؟', type: 'tf', q: 'أبرام قال للمصريين إن ساراي أخته عشان كان خايف يقتلوه.', answer: true, explain: 'صح: «فَيَقْتُلُونَنِي وَيَسْتَبْقُونَكِ. قُولِي إِنَّكِ أُخْتِي» (تك ١٢: ١٢-١٣). وربنا حفظها برضه: «فَضَرَبَ الرَّبُّ فِرْعَوْنَ وَبَيْتَهُ ضَرَبَاتٍ عَظِيمَةً» (تك ١٢: ١٧)' },
+      { emoji: '🫏', title: 'بطرس التانية', type: 'mcq', q: 'مين اللي منع حماقة النبي بلعام وهو بيتكلم بصوت إنسان؟', options: ['ملاك', 'حمار أعجم', 'طير', 'ولد صغير'], answer: 1, explain: '«إِذْ مَنَعَ حَمَاقَةَ النَّبِيِّ حِمَارٌ أَعْجَمُ نَاطِقًا بِصَوْتِ إِنْسَانٍ» (٢ بط ٢: ١٦)' },
+      { emoji: '💧', title: 'وصّل', type: 'match', q: 'وصّل من بطرس التانية ٢', answer: [{ a: 'نوح', b: 'كارز للبر' }, { a: 'لوط', b: 'البار اللي ربنا أنقذه' }, { a: 'المعلمون الكذبة', b: 'آبار بلا ماء' }], explain: '٢ بطرس ٢: ٥، ٧، ١٧' },
+      { emoji: '⛺', title: 'آية الوصول', type: 'fill', q: 'كمّل: «يعلم الرب أن ينقذ …… من التجربة»', answer: 'الأتقياء / الاتقياء / الأتقيا', explain: '«يَعْلَمُ الرَّبُّ أَنْ يُنْقِذَ الْأَتْقِيَاءَ مِنَ التَّجْرِبَةِ» (٢ بط ٢: ٩)' },
+    ],
+  },
 };
+// look of the default (non-rainbow) games: the ark for Noah, a camel road for Abram
+const SKINS = {
+  ark: { intro: '<div class="gwave"><span class="gboat">🛶</span></div>', rider: '🛶', last: 'اطلع من الفلك 🏁', win: 'خرجت من الفلك!', lose: 'الطوفان لسه مخلصش 😅', honor: '🛶 أول الخارجين من الفلك' },
+  journey: { intro: '<div class="gdesert"><span class="gsun"></span><span class="gtent">⛺</span><span class="gcamel">🐪</span></div>', rider: '🐪', last: 'وصلت أرض كنعان 🏁', win: 'وصلت أرض الموعد! ⛺', lose: 'لسه في حاران 😅', honor: '🐪 أول الواصلين لأرض الموعد' },
+};
+const skinOf = (g) => SKINS[g.theme] || SKINS.ark;
 export const GTYPES = { mcq: 'اختياري', tf: 'صح وخطأ', fill: 'أكمل', order: 'رتّب', verse: 'آية مكسّرة', match: 'وصّل' };
 const RAIN = ['#E53935', '#FB8C00', '#FDD835', '#43A047', '#1E88E5', '#3949AB', '#8E24AA'];
 const EMOJI = ['🌊', '🧭', '⚓', '🕊️', '🌿', '🔥', '⛵', '🌈', '💧', '🎁'];
@@ -80,7 +100,7 @@ export function vGame(arg) {
   if (!g) { APP.innerHTML = `<div class="view">${head}<section class="card empty"><div class="big">🎮</div><h2>لسه مفيش لعبة لليوم ده</h2><p class="sub">الخدام بيجهزوها… ارجع تاني بعد شوية.</p><a class="btn primary block" href="#/today">رجوع</a></section></div>`; return; }
   const mine = (meU().quiz || {})[gkey(n)];
   if (mine) return board(d, g, head, mine);
-  APP.innerHTML = `<div class="view game">${head}<section class="card gintro">${g.theme === 'rainbow' ? rainbow(0, g.stations.length, true) : '<div class="gwave"><span class="gboat">🛶</span></div>'}<h1>${esc(g.title)}</h1><p class="sub">${esc(g.intro || '')}</p>
+  APP.innerHTML = `<div class="view game">${head}<section class="card gintro">${g.theme === 'rainbow' ? rainbow(0, g.stations.length, true) : skinOf(g).intro}<h1>${esc(g.title)}</h1><p class="sub">${esc(g.intro || '')}</p>
     <ul class="rules"><li>${ar(g.stations.length)} ${g.theme === 'rainbow' ? 'مراحل' : 'محطات'} على قراية اليوم ${ar(n)}: ${otLabel(d)}${d.nt ? '، ' + ntLabel(d) : ''}</li><li>${g.stations.some((x) => ['order', 'verse', 'match'].includes(x.type)) ? 'النجمة بتتحسب لو حلّيت المرحلة من أول محاولة' : 'كل إجابة بتتصحح على طول'}</li><li>الوقت بيتحسب، ولو اتساوت النجوم الأسرع بيسبق</li>${mine ? '<li><b>إنت لعبتها قبل كده، المرة دي للتسلية ومش هتتحسب</b></li>' : '<li>بتتلعب مرة واحدة بس، فركّز 🙂</li>'}</ul>
     <div class="actions"><button class="btn red" id="ggo">يلا نبدأ 🚀</button><a class="btn ghost" href="#/read/${n}">اقرا الأول 📖</a></div></section></div>`;
   $('#ggo').onclick = () => play(d, g, head, !mine);
@@ -94,7 +114,7 @@ function track(g, i, res) {
   if (g.theme === 'rainbow') return `<div class="rtrack">${rainbow(res.filter((x) => x !== undefined).length, g.stations.length)}<div class="rdots">${g.stations.map((_, k) => `<i class="${res[k] === true ? 'ok' : res[k] === false ? 'no' : k === i ? 'cur' : ''}" style="--c:${RAIN[k % 7]}">${res[k] === true ? '★' : ar(k + 1)}</i>`).join('')}</div></div>`;
   const N = Math.max(2, g.stations.length);
   return `<div class="gtrack"><div class="gline"><i style="width:${(i / N) * 100}%"></i></div>${g.stations.map((s, k) => `<span class="gst ${res[k] === true ? 'ok' : res[k] === false ? 'no' : k === i ? 'cur' : ''}" style="right:${(k / (N - 1)) * 100}%">${res[k] === true ? '✓' : res[k] === false ? '✗' : ar(k + 1)}</span>`).join('')}
-    <span class="gboat moving" style="right:${(Math.min(i, N - 1) / (N - 1)) * 100}%">🛶</span></div>`;
+    <span class="gboat moving${g.theme === 'journey' ? ' nf' : ''}" style="right:${(Math.min(i, N - 1) / (N - 1)) * 100}%">${skinOf(g).rider}</span></div>`;
 }
 
 const shuffle = (arr, seed = 7) => { const a = [...arr]; let x = seed; for (let i = a.length - 1; i > 0; i--) { x = (x * 9301 + 49297) % 233280; const j = Math.floor((x / 233280) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } if (a.length > 1 && a.every((v, i) => v === arr[i])) a.push(a.shift()); return a; };
@@ -116,7 +136,7 @@ function play(d, g, head, counts) {
       res[i] = ok; if (ok) c++; vibrate(ok ? 20 : [30, 60, 30]);
       if (ok && at) { const r = at.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, 45); }
       $('#gx').innerHTML = `<p class="${ok ? 'good' : /^(تمام|وصّلتهم)/.test(msg || '') ? 'meh' : 'bad'}">${msg || (ok ? praise(i) : 'مش دي…')}</p>${s.explain ? `<small>${esc(s.explain)}</small>` : ''}
-        <button class="btn ${i < S2.length - 1 ? 'primary' : 'red'} block" id="gn">${i < S2.length - 1 ? (g.theme === 'rainbow' ? 'المرحلة اللي بعدها ←' : 'المحطة اللي بعدها ←') : (g.theme === 'rainbow' ? 'كمّل القوس 🌈' : 'اطلع من الفلك 🏁')}</button>`;
+        <button class="btn ${i < S2.length - 1 ? 'primary' : 'red'} block" id="gn">${i < S2.length - 1 ? (g.theme === 'rainbow' ? 'المرحلة اللي بعدها ←' : 'المحطة اللي بعدها ←') : (g.theme === 'rainbow' ? 'كمّل القوس 🌈' : skinOf(g).last)}</button>`;
       $('.gscore').textContent = `⭐ ${ar(c)}`; $('#gtr').innerHTML = track(g, i + 1, res);
       $('#gn').scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
       $('#gn').onclick = async () => {
@@ -186,7 +206,7 @@ function play(d, g, head, counts) {
 function finish(d, g, head, r, counts) {
   const all = r.c === r.t; const ps = players(d.n); const rank = ps.findIndex((x) => x.u.phone === S.me.phone) + 1;
   APP.innerHTML = `<div class="view game">${head}<section class="card gend">${g.theme === 'rainbow' ? '' : `<div class="big">${all ? '🏆' : r.c >= r.t / 2 ? '🕊️' : '📖'}</div>`}
-    ${g.theme === 'rainbow' ? rainbow(7, 7, true) : ''}<h1>${g.theme === 'rainbow' ? (all ? 'القوس كمل… والوعد ثابت! 🌈' : 'لوّنت القوس كله!') : all ? 'خرجت من الفلك!' : r.c >= r.t / 2 ? 'قربت توصل!' : 'الطوفان لسه مخلصش 😅'}</h1>
+    ${g.theme === 'rainbow' ? rainbow(7, 7, true) : ''}<h1>${g.theme === 'rainbow' ? (all ? 'القوس كمل… والوعد ثابت! 🌈' : 'لوّنت القوس كله!') : all ? skinOf(g).win : r.c >= r.t / 2 ? 'قربت توصل!' : skinOf(g).lose}</h1>
     <div class="gstars">${Array.from({ length: r.t }, (_, k) => `<i class="${k < r.c ? 'on' : ''}">★</i>`).join('')}</div>
     <p class="gres"><b>${ar(r.c)}</b> من ${ar(r.t)} في <b>${clock(r.d)}</b>${counts && rank ? `، ترتيبك <b>${ar(rank)}</b> من ${ar(ps.length)}` : ''}</p>
     ${counts ? '' : '<p class="sub">دي كانت للتسلية، نتيجتك الأولى هي اللي بتتحسب.</p>'}
@@ -200,7 +220,7 @@ function boardHTML(n, g) {
   const ps = players(n); if (!ps.length) return '';
   const meI = ps.findIndex((x) => x.u.phone === S.me.phone); const medal = (k) => ['🥇', '🥈', '🥉'][k] || ar(k + 1);
   const row = ({ u, r }, k) => `<li class="${u.phone === S.me.phone ? 'me' : ''} ${k < 3 ? 'top' : ''}"><span class="md">${medal(k)}</span>${avatar(u.name, 30)}<span class="hn">${esc(first(u.name))}</span><span class="hs">${ar(r.c)}<small>/${ar(r.t)}</small></span><span class="ht">${clock(r.d || 0)}</span></li>`;
-  return `<section class="card honor-card gold"><h2>${g && g.theme === 'rainbow' ? '🌈 أول من لوّن القوس' : '🛶 أول الخارجين من الفلك'}</h2><p class="sub">${ar(ps.length)} لعبوا</p><ol class="honor">${ps.slice(0, 10).map(row).join('')}</ol>${meI >= 10 ? `<ol class="honor" start="${meI + 1}">${row(ps[meI], meI)}</ol>` : ''}</section>`;
+  return `<section class="card honor-card gold"><h2>${g && g.theme === 'rainbow' ? '🌈 أول من لوّن القوس' : skinOf(g).honor}</h2><p class="sub">${ar(ps.length)} لعبوا</p><ol class="honor">${ps.slice(0, 10).map(row).join('')}</ol>${meI >= 10 ? `<ol class="honor" start="${meI + 1}">${row(ps[meI], meI)}</ol>` : ''}</section>`;
 }
 
 function board(d, g, head, mine) {
