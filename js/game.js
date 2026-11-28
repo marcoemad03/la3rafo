@@ -55,7 +55,7 @@ const clock = (s) => `${ar(Math.floor(s / 60))}:${ar(String(s % 60).padStart(2, 
 export function pastGames() { const t = todayCairo(); return DAYS.filter((d) => d.date <= t && gameFor(d.n)); }
 export function gameCTA(n) {
   const past = pastGames().filter((d) => d.n !== n); const left = past.filter((d) => !(meU().quiz || {})[gkey(d.n)]).length;
-  const more = past.length ? `<a class="games-link" href="#/games">🕹️ ${left === 1 ? 'فيه لعبة لسه ملعبتهاش' : left === 2 ? 'فيه لعبتين لسه ملعبتهمش' : left ? `فيه ${ar(left)} ألعاب لسه ملعبتهمش` : 'كل الألعاب (لعبتهم كلهم ✓)'}</a>` : '';
+  const more = past.length ? `<a class="card games-card ${left ? 'has' : ''}" href="#/games"><span class="gi">🕹️</span><span class="grow"><b>كل الألعاب</b><small>${left === 1 ? 'فيه لعبة لسه ملعبتهاش' : left === 2 ? 'فيه لعبتين لسه ملعبتهمش' : left ? `فيه ${ar(left)} ألعاب لسه ملعبتهمش` : `لعبت الـ${ar(past.length)} كلهم ✓`}</small></span>${left ? `<span class="gcount">${ar(left)}</span>` : ''}${ICON.back}</a>` : '';
   const g = gameFor(n); if (!g) return more;
   const mine = (meU().quiz || {})[gkey(n)]; const ps = players(n).length;
   return `<a class="card game-cta ${mine ? 'played' : ''}" href="#/game/${n}"><span class="gi">🎮</span><span class="grow"><b>لعبة النهارده</b><small>${mine ? `لعبتها ✓ جبت ${ar(mine.c)} من ${ar(mine.t)}، شوف ترتيبك` : `${esc(g.title)}، ${ar(g.stations.length)} محطات${ps ? `، ${ar(ps)} لعبوها` : ''}`}</small></span>${mine ? '<span class="gbadge">🏆</span>' : '<span class="gplay">العب</span>'}</a>${more}`;
