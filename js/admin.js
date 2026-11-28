@@ -18,6 +18,7 @@ export async function vAdmin(tab = 'home', arg) {
   if (!(await api.isServant())) return gate();
   const T = TABS.find((x) => x[0] === tab) ? tab : 'home';
   const nav = `<div class="atabs">${TABS.map(([k, l]) => `<a href="#/khadem/${k}" class="${k === T ? 'on' : ''}">${l}</a>`).join('')}</div>`;
+  S.bonus = await api.listBonus();
   APP.innerHTML = `<div class="view admin">${topbar()}<div class="hello"><h1>لوحة الخدام</h1><p>${ar(S.users.length)} مشترك في الرحلة</p></div>${nav}<div id="ab"></div></div>`;
   ({ home, day: dayTab, people, points: pointsTab, asks: asksTab, reports: reportsTab, game: gameTab, quiz: quizTab, exams: examsTab, word }[T])($('#ab'), arg);
   $('.atabs a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -86,7 +87,7 @@ function dayTab(el, arg) {
 // ---------------------------------------------------------------- people
 function people(el) {
   const t = todayCairo(); const sort = S.pSort || 'cons';
-  const rows = S.users.map((u) => ({ u, s: userStats(u, t) }));
+  const rows = S.users.map((u) => ({ u, s: statsB(u, t) }));
   const key = { pts: (r) => -r.s.points * 1000 - r.s.onTime, name: (r) => r.u.name, cons: (r) => -r.s.consistency * 1000 - r.s.read, late: (r) => -r.s.late, missed: (r) => -r.s.missed, quiz: (r) => -(r.s.qt ? r.s.qc / r.s.qt : -1), last: (r) => -r.s.lastAt }[sort];
   rows.sort((a, b) => { const x = key(a), y = key(b); return typeof x === 'string' ? x.localeCompare(y, 'ar') : x - y; });
   const th = (k, l) => `<button class="${sort === k ? 'on' : ''}" data-s="${k}">${l}</button>`;
@@ -102,36 +103,50 @@ function people(el) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `لأعرفه-المشتركين-${todayCairo()}.csv`; a.click();
   };
 }
+// servants can grant extra points (questions / consistency); kept separate so it's always visible as إضافي
+const bonusOf = (u) => { const b = (S.bonus || {})[u.phone] || {}; return { q: +b.q || 0, r: +b.r || 0, note: b.note || '' }; };
+const statsB = (u, t) => { const s = userStats(u, t); const b = bonusOf(u); return { ...s, bonus: b, extra: b.q + b.r, points: s.points + b.q + b.r }; };
 const rankOf = (rows, i) => { let r = i; while (r > 0 && rows[r - 1].s.points === rows[i].s.points) r--; return r + 1; };
 function ptsBox(s) {
-  return `<div class="ptsbox"><div><span>قراءة في معادها</span><small>${ar(s.onTime)} × ${ar(PTS.onTime)}</small><b>${ar(s.pts.onTime)}</b></div><div><span>قراءة متأخرة</span><small>${ar(s.late)} × ${ar(PTS.late)}</small><b>${ar(s.pts.late)}</b></div><div><span>أسئلة صح</span><small>${ar(s.qc)} × ${ar(PTS.q)}</small><b>${ar(s.pts.q)}</b></div><div class="tot"><span>المجموع</span><small></small><b>${ar(s.points)}</b></div></div>`;
+  return `<div class="ptsbox"><div><span>قراءة في معادها</span><small>${ar(s.onTime)} × ${ar(PTS.onTime)}</small><b>${ar(s.pts.onTime)}</b></div><div><span>قراءة متأخرة</span><small>${ar(s.late)} × ${ar(PTS.late)}</small><b>${ar(s.pts.late)}</b></div><div><span>أسئلة صح</span><small>${ar(s.qc)} × ${ar(PTS.q)}</small><b>${ar(s.pts.q)}</b></div>${s.extra ? `<div class="xb"><span>إضافي</span><small>${s.bonus.q ? `أسئلة ${ar(s.bonus.q)}` : ''}${s.bonus.q && s.bonus.r ? '، ' : ''}${s.bonus.r ? `انتظام ${ar(s.bonus.r)}` : ''}</small><b>+${ar(s.extra)}</b></div>` : ''}<div class="tot"><span>المجموع</span><small></small><b>${ar(s.points)}</b></div></div>`;
 }
 function pointsTab(el) {
-  const t = todayCairo(); const rows = S.users.map((u) => ({ u, s: userStats(u, t) })).sort((a, b) => b.s.points - a.s.points || b.s.onTime - a.s.onTime || a.u.name.localeCompare(b.u.name, 'ar'));
-  const sum = (k) => rows.reduce((a, r) => a + r.s.pts[k], 0);
+  const t = todayCairo(); const rows = S.users.map((u) => ({ u, s: statsB(u, t) })).sort((a, b) => b.s.points - a.s.points || b.s.onTime - a.s.onTime || a.u.name.localeCompare(b.u.name, 'ar'));
+  const sum = (k) => rows.reduce((a, r) => a + r.s.pts[k], 0); const sumX = rows.reduce((a, r) => a + r.s.extra, 0);
   el.innerHTML = `<section class="card ptrule"><h2>إزاي النقاط بتتحسب</h2><div class="rules3"><div><b>${ar(PTS.onTime)}</b><span>لكل أصحاح اتقرا في يومه</span></div><div><b>${ar(PTS.late)}</b><span>لكل أصحاح اتقرا بعد يومه</span></div><div><b>${ar(PTS.q)}</b><span>لكل إجابة صح في أسئلة الأصحاحات</span></div></div>
-    <p class="sub">الأيام اللي معادها لسه مجاش مش بتتحسب. المجموع للكل: ${ar(sum('onTime') + sum('late') + sum('q'))} نقطة.</p></section>
-  <div class="pttable"><div class="ph"><span>#</span><span class="grow">الاسم</span><span>معاده</span><span>متأخر</span><span>أسئلة</span><span>المجموع</span></div>
-  ${rows.map((r, i) => `<button class="pr ${i < 3 && r.s.points ? 'top' : ''}" data-p="${r.u.phone}"><span class="rk">${ar(rankOf(rows, i))}</span><span class="grow"><b>${esc(r.u.name)}</b></span><span>${ar(r.s.pts.onTime)}</span><span>${ar(r.s.pts.late)}</span><span>${ar(r.s.pts.q)}</span><span class="tt">${ar(r.s.points)}</span></button>`).join('')}</div>
+    <p class="sub">الأيام اللي معادها لسه مجاش مش بتتحسب. المجموع للكل: ${ar(sum('onTime') + sum('late') + sum('q') + sumX)} نقطة. ودوس على أي اسم عشان تضيفله نقط إضافية.</p></section>
+  <div class="pttable"><div class="ph"><span>#</span><span class="grow">الاسم</span><span>معاده</span><span>متأخر</span><span>أسئلة</span><span>إضافي</span><span>المجموع</span></div>
+  ${rows.map((r, i) => `<button class="pr ${i < 3 && r.s.points ? 'top' : ''}" data-p="${r.u.phone}"><span class="rk">${ar(rankOf(rows, i))}</span><span class="grow"><b>${esc(r.u.name)}</b></span><span>${ar(r.s.pts.onTime)}</span><span>${ar(r.s.pts.late)}</span><span>${ar(r.s.pts.q)}</span><span class="xt">${r.s.extra ? '+' + ar(r.s.extra) : '—'}</span><span class="tt">${ar(r.s.points)}</span></button>`).join('')}</div>
   <button class="btn ghost block" id="pcsv" style="margin-top:14px">⬇️ نزّل جدول النقاط (Excel / CSV)</button>`;
   $$('.pr', el).forEach((b) => b.onclick = () => personModal(S.users.find((u) => u.phone === b.dataset.p)));
   $('#pcsv', el).onclick = () => {
-    const head = ['الترتيب', 'الاسم', 'الموبايل', 'قراءة في معادها', `نقاطها (×${PTS.onTime})`, 'قراءة متأخرة', `نقاطها (×${PTS.late})`, 'أسئلة صح', `نقاطها (×${PTS.q})`, 'المجموع'];
-    const lines = rows.map((r, i) => [rankOf(rows, i), r.u.name, r.u.phone, r.s.onTime, r.s.pts.onTime, r.s.late, r.s.pts.late, r.s.qc, r.s.pts.q, r.s.points]);
+    const head = ['الترتيب', 'الاسم', 'الموبايل', 'قراءة في معادها', `نقاطها (×${PTS.onTime})`, 'قراءة متأخرة', `نقاطها (×${PTS.late})`, 'أسئلة صح', `نقاطها (×${PTS.q})`, 'إضافي أسئلة', 'إضافي انتظام', 'سبب الإضافة', 'المجموع'];
+    const lines = rows.map((r, i) => [rankOf(rows, i), r.u.name, r.u.phone, r.s.onTime, r.s.pts.onTime, r.s.late, r.s.pts.late, r.s.qc, r.s.pts.q, r.s.bonus.q, r.s.bonus.r, r.s.bonus.note, r.s.points]);
     const csv = '﻿' + [head, ...lines].map((x) => x.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `لأعرفه-النقاط-${t}.csv`; a.click();
   };
 }
 function personModal(u) {
-  if (!u) return; const t = todayCairo(); const s = userStats(u, t);
+  if (!u) return; const t = todayCairo(); const s = statsB(u, t);
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<div class="box" style="text-align:right"><div class="row">${avatar(u.name, 48)}<div><h2 style="margin:0">${esc(u.name)}</h2><span class="sub" dir="ltr">${esc(u.phone)}</span></div></div>
     <div class="stats" style="margin-top:12px"><div class="stat"><b>${ar(s.onTime)}</b><span>في معاده</span></div><div class="stat"><b>${ar(s.late)}</b><span>متأخر</span></div><div class="stat"><b>${ar(s.missed)}</b><span>فاته</span></div></div>
     ${ptsBox(s)}
     <div class="dgrid">${DAYS.map((d) => `<i class="${d.date > t ? 'fu' : readState(u, d.n)}" title="اليوم ${d.n}">${ar(d.n)}</i>`).join('')}</div>
     <p class="legend2" style="justify-content:center;margin-top:8px"><i class="on"></i>في معاده <i class="la"></i>متأخر <i class="no"></i>فاته</p>
+    <details class="bonusf"${s.extra ? ' open' : ''}><summary>➕ نقاط إضافية</summary>
+      <div class="bfrow"><label>أسئلة<input type="number" inputmode="numeric" min="0" max="999" id="bq" value="${s.bonus.q || ''}" placeholder="٠"></label><label>انتظام<input type="number" inputmode="numeric" min="0" max="999" id="br" value="${s.bonus.r || ''}" placeholder="٠"></label></div>
+      <input id="bn" maxlength="80" placeholder="السبب (اختياري)، مثلًا: حضور الاجتماع" value="${esc(s.bonus.note)}"><button class="btn primary block" id="bsave">احفظ النقط</button>
+      <p class="hint">بتتجمع على المجموع وبتظهر في عمود «إضافي» لوحدها، والانتظام ٪ بيفضل محسوب من القراية الفعلية.</p></details>
     <div class="actions">${waBtn(u, `سلام يا ${first(u.name)} 🌿`)}<button class="btn ghost" id="cl">قفل</button></div></div>`;
   document.body.appendChild(m); m.onclick = (e) => { if (e.target === m || e.target.id === 'cl') m.remove(); };
+  $('#bsave', m).onclick = async (e) => {
+    const v = (id) => Math.max(0, Math.min(999, Math.round(+$(id, m).value || 0)));
+    const b = { q: v('#bq'), r: v('#br'), note: $('#bn', m).value.trim().slice(0, 80) };
+    e.currentTarget.disabled = true;
+    if (await api.setBonus(u.phone, b)) { S.bonus = { ...(S.bonus || {}), [u.phone]: b }; toast(`اتحفظ ✓ ${first(u.name)} بقى معاه ${ar(statsB(u, t).points)} نقطة`); m.remove(); const ab = $('#ab'); const on = $('.atabs a.on')?.getAttribute('href') || ''; if (ab && on.endsWith('/points')) pointsTab(ab); else if (ab && on.endsWith('/people')) people(ab); }
+    else { toast('مقدرتش أحفظ… اتأكد إن قواعد Firestore الجديدة اتحطت'); e.currentTarget.disabled = false; }
+  };
 }
 
 // ---------------------------------------------------------------- questions from participants (answered on WhatsApp)

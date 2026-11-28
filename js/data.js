@@ -96,7 +96,7 @@ export let mode = 'demo';
 // ------------------------------------------------------------------ DEMO
 function demoImpl() {
   const K = 'demo3_';
-  const memo = { users: store.get(K + 'users', null), wall: store.get(K + 'wall', null), days: store.get(K + 'days', {}), chq: store.get(K + 'chq', {}), exams: store.get(K + 'exams', []), keys: store.get(K + 'keys', {}), subs: store.get(K + 'subs', []), qs: store.get(K + 'qs', null) };
+  const memo = { users: store.get(K + 'users', null), wall: store.get(K + 'wall', null), days: store.get(K + 'days', {}), chq: store.get(K + 'chq', {}), exams: store.get(K + 'exams', []), keys: store.get(K + 'keys', {}), subs: store.get(K + 'subs', []), qs: store.get(K + 'qs', null), bonus: store.get(K + 'bonus', {}) };
   if (!memo.users) {
     const names = ['مينا عادل', 'مارينا سمير', 'كيرلس ناجي', 'مريم هاني', 'أبانوب رأفت', 'فادي جرجس', 'كاترين عماد', 'يوستينا مجدي', 'جورج صبحي', 'ماريان فايز', 'مايكل نبيل', 'ساندرا رامي', 'أندرو ماهر', 'ميرنا أشرف', 'شنودة فكري', 'فيرينا وجيه', 'بولا إسحق', 'ديفيد عاطف'];
     let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -142,7 +142,7 @@ function demoImpl() {
       { id: 'q2', phone: '01000001005', name: 'فادي جرجس', uid: 'demo-01000001005', ref: '', verse: '', text: 'إزاي قايين خاف إن حد يقتله وهما كانوا عيلة واحدة بس؟', status: 'answered', answeredBy: 'بيشوي', answeredAt: Date.now() - 36e5 * 20, at: Date.now() - 36e5 * 30 },
     ]; save();
   }
-  function save() { Object.entries({ users: memo.users, wall: memo.wall, days: memo.days, chq: memo.chq, exams: memo.exams, keys: memo.keys, subs: memo.subs, qs: memo.qs }).forEach(([k, v]) => store.set(K + k, v)); }
+  function save() { Object.entries({ users: memo.users, wall: memo.wall, days: memo.days, chq: memo.chq, exams: memo.exams, keys: memo.keys, subs: memo.subs, qs: memo.qs, bonus: memo.bonus }).forEach(([k, v]) => store.set(K + k, v)); }
   const me = () => memo.users.find((u) => u.phone === store.get('me', null));
   const myUid = () => 'demo-' + (store.get('me', '') || '');
   const all = () => { emit('users', memo.users.map(normUser)); emit('wall', memo.wall); emit('days', memo.days); emit('chq', memo.chq); emit('exams', memo.exams); emit('myq', (memo.qs || []).filter((q) => q.uid === myUid())); };
@@ -187,6 +187,8 @@ function demoImpl() {
     async gradeSubmission(id, phone, grades) { const s = memo.subs.find((x) => x.examId === id && x.phone === phone); if (s) { s.grades = grades; save(); } return true; },
     async ask(text, ref, verse) { const u = me(); memo.qs.unshift({ id: 'q' + Date.now(), phone: u.phone, name: u.name, uid: myUid(), text, ref: ref || '', verse: verse || '', status: 'new', at: Date.now() }); save(); all(); return true; },
     async listQuestions() { return [...memo.qs].sort((a, b) => b.at - a.at); },
+    async listBonus() { return { ...(memo.bonus || {}) }; },
+    async setBonus(phone, b) { memo.bonus = { ...(memo.bonus || {}), [phone]: { ...b, at: Date.now() } }; save(); return true; },
     async markAnswered(id, by, on = true) { const q = memo.qs.find((x) => x.id === id); if (q) { q.status = on ? 'answered' : 'new'; q.answeredBy = on ? by : ''; q.answeredAt = on ? Date.now() : null; save(); all(); } return true; },
   };
 }
@@ -283,6 +285,8 @@ async function firebaseImpl() {
     async submissions(id) { const q = await F.getDocs(F.query(F.collection(db, 'submissions'), F.where('examId', '==', id))); return q.docs.map((d) => d.data()); },
     async gradeSubmission(id, phone, grades) { try { await F.updateDoc(F.doc(db, 'submissions', `${id}_${phone}`), { grades }); return true; } catch (e) { console.warn(e); return false; } },
     async ask(text, ref, verse) { const u = me(); try { await F.addDoc(F.collection(db, 'questions'), { phone: u.phone, name: u.name, uid, text, ref: ref || '', verse: verse || '', status: 'new', at: F.serverTimestamp() }); return true; } catch (e) { console.warn(e); return false; } },
+    async listBonus() { try { const q = await F.getDocs(F.collection(db, 'bonus')); return Object.fromEntries(q.docs.map((d) => [d.id, d.data()])); } catch (e) { console.warn(e); return {}; } },
+    async setBonus(phone, b) { try { await F.setDoc(F.doc(db, 'bonus', phone), { ...b, at: F.serverTimestamp() }); return true; } catch (e) { console.warn(e); return false; } },
     async listQuestions() { const q = await F.getDocs(F.query(F.collection(db, 'questions'), F.orderBy('at', 'desc'), F.limit(300))); return q.docs.map((d) => { const x = d.data(); return { id: d.id, ...x, at: ms(x.at) || 0, answeredAt: ms(x.answeredAt) }; }); },
     async markAnswered(id, by, on = true) { try { await F.updateDoc(F.doc(db, 'questions', id), on ? { status: 'answered', answeredBy: by || '', answeredAt: F.serverTimestamp() } : { status: 'new', answeredBy: '', answeredAt: null }); return true; } catch (e) { console.warn(e); return false; } },
   };

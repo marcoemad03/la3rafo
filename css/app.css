@@ -663,3 +663,11 @@ body:not(.reading) .selbar{bottom:calc(var(--nav-h) + var(--safe-b) + 24px)}
 .ptsbox span{font-size:12px;color:var(--muted)}.ptsbox small{grid-column:1;font-size:11px;color:var(--muted);direction:rtl}
 .ptsbox b{grid-row:1/3;grid-column:2;font-size:20px;color:var(--navy)}
 .ptsbox .tot{background:var(--navy);border-color:var(--navy)}.ptsbox .tot span,.ptsbox .tot b{color:#fff}
+.pttable .pr .xt{color:#2E7D6B;font-weight:700}
+.ptsbox .xb{background:#e8f4ef;border-color:#bfe0d3}.ptsbox .xb b{color:#2E7D6B}
+.bonusf{margin-top:12px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.bonusf summary{font-weight:700;cursor:pointer}
+.bonusf .bfrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 8px}
+.bonusf label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.bonusf input{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;margin-bottom:8px}
+.bonusf .hint{font-size:11px;margin-top:6px}
