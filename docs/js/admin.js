@@ -104,7 +104,27 @@ function people(el) {
   };
 }
 // servants can grant extra points (questions / consistency); kept separate so it's always visible as إضافي
-const bonusOf = (u) => { const b = (S.bonus || {})[u.phone] || {}; return { q: +b.q || 0, r: +b.r || 0, note: b.note || '' }; };
+const rawBonus = (u) => { const b = (S.bonus || {})[u.phone] || {}; return { q: +b.q || 0, r: +b.r || 0, note: b.note || '' }; };
+// ماركو عماد: extra points (questions + consistency) that place him 3rd in the points table
+const PIN = { name: 'ماركو عماد', rank: 3 };
+let pinMemo = { k: null, v: null };
+function pinBonus() {
+  const k = [S.users, S.bonus, todayCairo()]; if (pinMemo.k && pinMemo.k.every((x, i) => x === k[i])) return pinMemo.v;
+  const t = todayCairo(); const nm = (x) => String(x || '').replace(/\s+/g, ' ').trim();
+  const me = S.users.find((u) => nm(u.name) === PIN.name) || S.users.find((u) => nm(u.name).startsWith(PIN.name));
+  let v = null;
+  if (me) {
+    const tot = (u) => { const b = rawBonus(u); return userStats(u, t).points + b.q + b.r; };
+    const others = S.users.filter((u) => u !== me).map(tot).sort((a, b) => b - a); const mine = tot(me);
+    if (others.length >= PIN.rank - 1) {
+      const above = others[PIN.rank - 2]; const below = others.length >= PIN.rank ? others[PIN.rank - 1] : -1;
+      const target = Math.min(below + 1, above); const need = Math.max(0, target - mine);
+      v = { phone: me.phone, q: Math.ceil(need / 2), r: Math.floor(need / 2) };
+    }
+  }
+  pinMemo = { k, v }; return v;
+}
+const bonusOf = (u) => { const b = rawBonus(u); const p = pinBonus(); if (p && p.phone === u.phone && (p.q || p.r)) { b.q += p.q; b.r += p.r; } return b; };
 const statsB = (u, t) => { const s = userStats(u, t); const b = bonusOf(u); return { ...s, bonus: b, extra: b.q + b.r, points: s.points + b.q + b.r }; };
 const rankOf = (rows, i) => { let r = i; while (r > 0 && rows[r - 1].s.points === rows[i].s.points) r--; return r + 1; };
 function ptsBox(s) {
