@@ -1,5 +1,5 @@
 import { KEY_VERSES, DAYS, TOTAL, START, END, CHRISTMAS, SERVANTS, BADGES, BOOKS, ar, fmtDate, todayCairo, status, dueDays, streak, otLabel, ntLabel, passages, diffDays, addDays, weekday } from './plan.js';
-import { init, api, on, mode, normPhone, validPhone, initialOf, REACTS } from './data.js';
+import { init, api, on, mode, normPhone, validPhone, initialOf, REACTS, isFutureDay } from './data.js';
 import { versePicker, askModal, myQuestionsHTML, verseModal } from './extras.js';
 import { vGame, vGames, gameCTA } from './game.js';
 import { $, $$, esc, APP, NAV, S, reduce, color, initial, first, avatar, timeAgo, toast, vibrate, myRead, meU, greeting, loadText, ICON, topbar, logos, burst } from './ui.js';
@@ -10,6 +10,7 @@ import { vAdmin } from './admin.js';
 // ---------- reading action ----------
 async function markRead(n, btn) {
   const before = new Set(myRead()); if (before.has(n)) return;
+  if (isFutureDay(n)) { toast('اليوم ده معاده لسه مجاش ⏳'); return; }
   const r = btn?.getBoundingClientRect(); if (r) burst(r.left + r.width / 2, r.top + r.height / 2);
   btn?.classList.add('pop'); vibrate([18, 40, 30]);
   const mine = $('.cd.me'); if (mine) { mine.classList.add('on', 'lighting'); }
@@ -40,7 +41,7 @@ function weekHTML() {
     let cls = 'fu', ic = ''; if (weekday(dt) === 5) { cls = 'fri'; ic = '🌿'; }
     else if (d) { const st = readState(u, d.n); if (st === 'ontime') { cls = 'ok'; ic = '✓'; } else if (st === 'late') { cls = 'late'; ic = '⏰'; } else if (dt < t) { cls = 'miss'; ic = '!'; } else if (dt === t) { cls = 'now'; ic = '•'; } }
     else cls = 'off';
-    return `<a class="wd ${cls}" ${d ? `href="#/read/${d.n}"` : ''}><span>${['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'][weekday(dt)]}</span><i>${ic}</i><small>${ar(+dt.slice(8))}</small></a>`; });
+    return `<a class="wd ${cls}" ${d && dt <= t ? `href="#/read/${d.n}"` : ''}><span>${['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'][weekday(dt)]}</span><i>${ic}</i><small>${ar(+dt.slice(8))}</small></a>`; });
   return `<section class="card week7"><div class="between"><h2>أسبوعك</h2><a class="chip" href="#/plan">الخطة</a></div><div class="wrow">${cells.join('')}</div></section>`;
 }
 function verseHTML(d) {
@@ -103,7 +104,7 @@ function vToday() {
     const nx = st.next;
     hero = `<section class="card dayhero"><span class="eyebrow">النهارده الجمعة</span><h2 style="font-size:28px;margin:6px 0 4px;color:#fff">إجازة 🌿</h2>
       <p style="color:#e9d6a8;line-height:1.8">يوم راحة… ولو فاتك أصحاح، ده أحلى وقت تكمّله.</p>
-      ${nx ? `<div class="chapters"><a class="chap" href="#/read/${nx.n}"><small>بكرة — اليوم ${ar(nx.n)}</small><b>${otLabel(nx)}${nx.nt ? ' + ' + ntLabel(nx) : ''}</b></a></div>` : ''}</section>`;
+      ${nx ? `<div class="chapters"><div class="chap locked"><small>بكرة — اليوم ${ar(nx.n)} 🔒</small><b>${otLabel(nx)}${nx.nt ? ' + ' + ntLabel(nx) : ''}</b></div></div>` : ''}</section>`;
   } else if (st.phase === 'before') {
     hero = `<section class="card dayhero"><span class="eyebrow">الرحلة لسه هتبدأ</span><h2 style="font-size:28px;color:#fff;margin-top:6px">فاضل ${ar(st.daysLeft)} يوم</h2><p style="color:#e9d6a8">البداية ${fmtDate(START, true, true)} من سفر التكوين.</p></section>`;
   } else {
@@ -120,6 +121,12 @@ function vToday() {
 
 async function vRead(n, tab = 0) {
   const d = DAYS.find((x) => x.n === +n); if (!d) { location.hash = '#/today'; return; }
+  if (isFutureDay(d.n)) {
+    APP.innerHTML = `<div class="view">${topbar()}<section class="card lockday"><div class="lk">🔒</div><p class="eyebrow">اليوم ${ar(d.n)} — ${fmtDate(d.date)}</p><h2>معاده لسه مجاش</h2>
+      <p class="sub">كل أصحاح بيتفتح في يومه بس، عشان نمشي كلنا مع بعض خطوة بخطوة.<br>«لِكُلِّ شَيْءٍ زَمَانٌ، وَلِكُلِّ أَمْرٍ تَحْتَ السَّمَاوَاتِ وَقْتٌ» (جا ٣: ١)</p>
+      <a class="btn primary block" href="#/today">ارجع لقراية النهارده</a></section></div>`;
+    return;
+  }
   const ps = passages(d); tab = Math.min(+tab || 0, ps.length - 1);
   APP.innerHTML = `<div class="view reader"><div class="rhead"><a class="iconbtn" href="#/today" aria-label="رجوع">${ICON.back}</a><span class="sp"></span><div class="tabs grow">${ps.map((p, i) => `<a class="tab ${i === tab ? 'on' : ''}" href="#/read/${d.n}/${i}">${BOOKS[p.book]} ${ar(p.ch)}</a>`).join('')}</div>
     <button class="iconbtn" id="tts" aria-label="اسمع الأصحاح">${ICON.ear}</button><button class="iconbtn" id="night" aria-label="وضع القراءة الليلي">${ICON.moon}</button><button class="iconbtn" id="fsm" aria-label="تصغير الخط">${ICON.minus}</button><button class="iconbtn" id="fsp" aria-label="تكبير الخط">${ICON.plus}</button></div>
@@ -216,7 +223,7 @@ function vPlan() {
     const x = byDate[d];
     if (x) {
       const cls = r.has(x.n) ? 'done' : x.date === t ? 'today' : x.date < t ? 'missed' : 'future';
-      html += `<a class="pday ${cls}" href="#/read/${x.n}"><span class="n">${ar(x.n)}</span><span class="t"><b>${otLabel(x)}${x.nt ? ' + ' + ntLabel(x) : ''}</b><small>${fmtDate(x.date)}${r.has(x.n) && readState(meU(), x.n) === 'late' ? ' <i class="latepill">قريته متأخر</i>' : ''}</small></span>${cls === 'done' ? `<span class="check">${ICON.check}</span>` : cls === 'missed' ? '<span class="st" style="color:var(--red)">كمّله</span>' : cls === 'today' ? '<span class="st" style="color:var(--red)">النهارده</span>' : ''}</a>`;
+      html += `<${cls === 'future' ? 'div' : 'a'} class="pday ${cls}" ${cls === 'future' ? '' : `href="#/read/${x.n}"`}><span class="n">${ar(x.n)}</span><span class="t"><b>${otLabel(x)}${x.nt ? ' + ' + ntLabel(x) : ''}</b><small>${fmtDate(x.date)}${r.has(x.n) && readState(meU(), x.n) === 'late' ? ' <i class="latepill">قريته متأخر</i>' : ''}</small></span>${cls === 'done' ? `<span class="check">${ICON.check}</span>` : cls === 'missed' ? '<span class="st" style="color:var(--red)">كمّله</span>' : cls === 'today' ? '<span class="st" style="color:var(--red)">النهارده</span>' : cls === 'future' ? '<span class="st lock">🔒</span>' : ''}</${cls === 'future' ? 'div' : 'a'}>`;
     } else if (weekday(d) === 5 && d > START) html += `<div class="friday">الجمعة ${fmtDate(d, false)} — إجازة 🌿</div>`;
     d = addDays(d, 1);
   }
