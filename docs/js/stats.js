@@ -11,6 +11,8 @@ export function readState(u, n) {
   const t = u.readAt && u.readAt[n]; if (!t) return 'ontime';
   return cairoDate(t) <= byN[n].date ? 'ontime' : 'late';
 }
+// points: on-time read 10, late read 5, each right answer in the chapter questions 3
+export const PTS = { onTime: 10, late: 5, q: 3 };
 export function userStats(u, today = todayCairo()) {
   const due = dueDays(today); const read = new Set(u.readDays || []);
   let onTime = 0, late = 0;
@@ -18,10 +20,10 @@ export function userStats(u, today = todayCairo()) {
   const dueN = due.length || 1;
   const quiz = Object.entries(u.quiz || {}).filter(([k]) => !k.startsWith('game_')).map(([, v]) => v); const qc = quiz.reduce((a, x) => a + (x.c || 0), 0); const qt = quiz.reduce((a, x) => a + (x.t || 0), 0);
   const st = streak(read, today);
-  const points = onTime * 10 + late * 5 + qc * 3 + st * 2;
+  const pts = { onTime: onTime * PTS.onTime, late: late * PTS.late, q: qc * PTS.q }; const points = pts.onTime + pts.late + pts.q;
   const lastAt = Math.max(0, ...Object.values(u.readAt || {}));
   return { read: read.size, onTime, late, missed: due.filter((d) => d.date < today && !read.has(d.n)).length, due: due.length,
-    consistency: Math.round((onTime / dueN) * 100), progress: read.size / TOTAL, streak: st, qc, qt, points, lastAt,
+    consistency: Math.round((onTime / dueN) * 100), progress: read.size / TOTAL, streak: st, qc, qt, points, pts, lastAt,
     badges: BADGES.filter((b) => b.test(read)).length, readToday: due.length && due[due.length - 1].date === today && read.has(due[due.length - 1].n) };
 }
 // "this week" = Saturday..Friday in Cairo

@@ -2,14 +2,14 @@
 import { DAYS, TOTAL, ar, fmtDate, todayCairo, dueDays, otLabel, ntLabel, BOOKS, status } from './plan.js';
 import { api, mode, normPhone, buildResults, scoreSub, gradeOne, QTYPES, qPts, qType } from './data.js';
 import { $, $$, esc, APP, S, first, avatar, toast, topbar, burst, ICON } from './ui.js';
-import { userStats, readState, cairoDate } from './stats.js';
+import { userStats, readState, cairoDate, PTS } from './stats.js';
 import { reportsTab } from './reports.js';
 import { gameFor, gameDay, players, GAMES, GTYPES } from './game.js';
 import { timeAgo } from './ui.js';
 
 const CH = [['gen', 50], ['jas', 5], ['1pe', 5], ['2pe', 3], ['1jn', 5], ['2jn', 1], ['3jn', 1], ['jud', 1], ['rev', 22]]
   .flatMap(([b, n]) => Array.from({ length: n }, (_, i) => ({ key: `${b}_${i + 1}`, label: `${BOOKS[b]} ${ar(i + 1)}` })));
-const TABS = [['home', 'نظرة عامة'], ['day', 'يوم بيوم'], ['people', 'المشتركين'], ['asks', 'أسئلة المخدومين'], ['reports', 'التقارير'], ['game', 'لعبة اليوم'], ['quiz', 'أسئلة الأصحاحات'], ['exams', 'الامتحانات'], ['word', 'كلمة اليوم']];
+const TABS = [['home', 'نظرة عامة'], ['day', 'يوم بيوم'], ['people', 'المشتركين'], ['points', 'النقاط'], ['asks', 'أسئلة المخدومين'], ['reports', 'التقارير'], ['game', 'لعبة اليوم'], ['quiz', 'أسئلة الأصحاحات'], ['exams', 'الامتحانات'], ['word', 'كلمة اليوم']];
 const wa = (p) => '2' + normPhone(p);
 const siteUrl = () => location.href.split('#')[0].replace(/khadem\/?$/, '');
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
@@ -19,7 +19,7 @@ export async function vAdmin(tab = 'home', arg) {
   const T = TABS.find((x) => x[0] === tab) ? tab : 'home';
   const nav = `<div class="atabs">${TABS.map(([k, l]) => `<a href="#/khadem/${k}" class="${k === T ? 'on' : ''}">${l}</a>`).join('')}</div>`;
   APP.innerHTML = `<div class="view admin">${topbar()}<div class="hello"><h1>لوحة الخدام</h1><p>${ar(S.users.length)} مشترك في الرحلة</p></div>${nav}<div id="ab"></div></div>`;
-  ({ home, day: dayTab, people, asks: asksTab, reports: reportsTab, game: gameTab, quiz: quizTab, exams: examsTab, word }[T])($('#ab'), arg);
+  ({ home, day: dayTab, people, points: pointsTab, asks: asksTab, reports: reportsTab, game: gameTab, quiz: quizTab, exams: examsTab, word }[T])($('#ab'), arg);
   $('.atabs a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 
@@ -87,19 +87,39 @@ function dayTab(el, arg) {
 function people(el) {
   const t = todayCairo(); const sort = S.pSort || 'cons';
   const rows = S.users.map((u) => ({ u, s: userStats(u, t) }));
-  const key = { name: (r) => r.u.name, cons: (r) => -r.s.consistency * 1000 - r.s.read, late: (r) => -r.s.late, missed: (r) => -r.s.missed, quiz: (r) => -(r.s.qt ? r.s.qc / r.s.qt : -1), last: (r) => -r.s.lastAt }[sort];
+  const key = { pts: (r) => -r.s.points * 1000 - r.s.onTime, name: (r) => r.u.name, cons: (r) => -r.s.consistency * 1000 - r.s.read, late: (r) => -r.s.late, missed: (r) => -r.s.missed, quiz: (r) => -(r.s.qt ? r.s.qc / r.s.qt : -1), last: (r) => -r.s.lastAt }[sort];
   rows.sort((a, b) => { const x = key(a), y = key(b); return typeof x === 'string' ? x.localeCompare(y, 'ar') : x - y; });
   const th = (k, l) => `<button class="${sort === k ? 'on' : ''}" data-s="${k}">${l}</button>`;
-  el.innerHTML = `<div class="between" style="margin-top:12px"><div class="sorts">${th('cons', 'الانتظام')}${th('missed', 'اللي فاتهم')}${th('late', 'المتأخر')}${th('quiz', 'الأسئلة')}${th('last', 'آخر قراءة')}${th('name', 'الاسم')}</div></div>
-  <div class="ptable">${rows.map(({ u, s }) => `<button class="prow" data-p="${u.phone}">${avatar(u.name, 34)}<span class="grow"><b>${esc(u.name)}</b><small>${ar(s.read)} قراءة: ${ar(s.onTime)} في معاده${s.late ? `، ${ar(s.late)} متأخر` : ''}${s.missed ? `، فاته ${ar(s.missed)}` : ''}${s.qt ? `، الأسئلة ${ar(s.qc)}/${ar(s.qt)}` : ''}</small></span><span class="cons" style="--p:${s.consistency}%">${ar(s.consistency)}٪</span></button>`).join('')}</div>
+  el.innerHTML = `<div class="between" style="margin-top:12px"><div class="sorts">${th('pts', 'النقاط')}${th('cons', 'الانتظام')}${th('missed', 'اللي فاتهم')}${th('late', 'المتأخر')}${th('quiz', 'الأسئلة')}${th('last', 'آخر قراءة')}${th('name', 'الاسم')}</div></div>
+  <div class="ptable">${rows.map(({ u, s }) => `<button class="prow" data-p="${u.phone}">${avatar(u.name, 34)}<span class="grow"><b>${esc(u.name)}</b><small>${ar(s.read)} قراءة: ${ar(s.onTime)} في معاده${s.late ? `، ${ar(s.late)} متأخر` : ''}${s.missed ? `، فاته ${ar(s.missed)}` : ''}${s.qt ? `، الأسئلة ${ar(s.qc)}/${ar(s.qt)}` : ''}</small></span><span class="ptchip">${ar(s.points)}<small>نقطة</small></span><span class="cons" style="--p:${s.consistency}%">${ar(s.consistency)}٪</span></button>`).join('')}</div>
   <button class="btn ghost block" id="csv" style="margin-top:14px">⬇️ نزّل البيانات (Excel / CSV)</button>`;
   $$('.sorts button', el).forEach((b) => b.onclick = () => { S.pSort = b.dataset.s; people(el); });
   $$('.prow', el).forEach((b) => b.onclick = () => personModal(S.users.find((u) => u.phone === b.dataset.p)));
   $('#csv', el).onclick = () => {
-    const head = ['الاسم', 'الموبايل', 'قرا', 'في معاده', 'متأخر', 'فاته', 'الانتظام %', 'أسئلة صح', 'أسئلة كلها', 'أيام متتالية', ...DAYS.map((d) => `يوم ${d.n}`)];
-    const lines = rows.map(({ u, s }) => [u.name, u.phone, s.read, s.onTime, s.late, s.missed, s.consistency, s.qc, s.qt, s.streak, ...DAYS.map((d) => ({ ontime: '✓', late: 'متأخر', no: '' }[readState(u, d.n)]))]);
+    const head = ['الاسم', 'الموبايل', 'قرا', 'في معاده', 'متأخر', 'فاته', 'الانتظام %', 'أسئلة صح', 'أسئلة كلها', 'أيام متتالية', 'نقاط القراءة في المعاد', 'نقاط القراءة المتأخرة', 'نقاط الأسئلة', 'مجموع النقاط', ...DAYS.map((d) => `يوم ${d.n}`)];
+    const lines = rows.map(({ u, s }) => [u.name, u.phone, s.read, s.onTime, s.late, s.missed, s.consistency, s.qc, s.qt, s.streak, s.pts.onTime, s.pts.late, s.pts.q, s.points, ...DAYS.map((d) => ({ ontime: '✓', late: 'متأخر', no: '' }[readState(u, d.n)]))]);
     const csv = '﻿' + [head, ...lines].map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `لأعرفه-المشتركين-${todayCairo()}.csv`; a.click();
+  };
+}
+const rankOf = (rows, i) => { let r = i; while (r > 0 && rows[r - 1].s.points === rows[i].s.points) r--; return r + 1; };
+function ptsBox(s) {
+  return `<div class="ptsbox"><div><span>قراءة في معادها</span><small>${ar(s.onTime)} × ${ar(PTS.onTime)}</small><b>${ar(s.pts.onTime)}</b></div><div><span>قراءة متأخرة</span><small>${ar(s.late)} × ${ar(PTS.late)}</small><b>${ar(s.pts.late)}</b></div><div><span>أسئلة صح</span><small>${ar(s.qc)} × ${ar(PTS.q)}</small><b>${ar(s.pts.q)}</b></div><div class="tot"><span>المجموع</span><small></small><b>${ar(s.points)}</b></div></div>`;
+}
+function pointsTab(el) {
+  const t = todayCairo(); const rows = S.users.map((u) => ({ u, s: userStats(u, t) })).sort((a, b) => b.s.points - a.s.points || b.s.onTime - a.s.onTime || a.u.name.localeCompare(b.u.name, 'ar'));
+  const sum = (k) => rows.reduce((a, r) => a + r.s.pts[k], 0);
+  el.innerHTML = `<section class="card ptrule"><h2>إزاي النقاط بتتحسب</h2><div class="rules3"><div><b>${ar(PTS.onTime)}</b><span>لكل أصحاح اتقرا في يومه</span></div><div><b>${ar(PTS.late)}</b><span>لكل أصحاح اتقرا بعد يومه</span></div><div><b>${ar(PTS.q)}</b><span>لكل إجابة صح في أسئلة الأصحاحات</span></div></div>
+    <p class="sub">الأيام اللي معادها لسه مجاش مش بتتحسب. المجموع للكل: ${ar(sum('onTime') + sum('late') + sum('q'))} نقطة.</p></section>
+  <div class="pttable"><div class="ph"><span>#</span><span class="grow">الاسم</span><span>معاده</span><span>متأخر</span><span>أسئلة</span><span>المجموع</span></div>
+  ${rows.map((r, i) => `<button class="pr ${i < 3 && r.s.points ? 'top' : ''}" data-p="${r.u.phone}"><span class="rk">${ar(rankOf(rows, i))}</span><span class="grow"><b>${esc(r.u.name)}</b></span><span>${ar(r.s.pts.onTime)}</span><span>${ar(r.s.pts.late)}</span><span>${ar(r.s.pts.q)}</span><span class="tt">${ar(r.s.points)}</span></button>`).join('')}</div>
+  <button class="btn ghost block" id="pcsv" style="margin-top:14px">⬇️ نزّل جدول النقاط (Excel / CSV)</button>`;
+  $$('.pr', el).forEach((b) => b.onclick = () => personModal(S.users.find((u) => u.phone === b.dataset.p)));
+  $('#pcsv', el).onclick = () => {
+    const head = ['الترتيب', 'الاسم', 'الموبايل', 'قراءة في معادها', `نقاطها (×${PTS.onTime})`, 'قراءة متأخرة', `نقاطها (×${PTS.late})`, 'أسئلة صح', `نقاطها (×${PTS.q})`, 'المجموع'];
+    const lines = rows.map((r, i) => [rankOf(rows, i), r.u.name, r.u.phone, r.s.onTime, r.s.pts.onTime, r.s.late, r.s.pts.late, r.s.qc, r.s.pts.q, r.s.points]);
+    const csv = '﻿' + [head, ...lines].map((x) => x.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `لأعرفه-النقاط-${t}.csv`; a.click();
   };
 }
 function personModal(u) {
@@ -107,6 +127,7 @@ function personModal(u) {
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<div class="box" style="text-align:right"><div class="row">${avatar(u.name, 48)}<div><h2 style="margin:0">${esc(u.name)}</h2><span class="sub" dir="ltr">${esc(u.phone)}</span></div></div>
     <div class="stats" style="margin-top:12px"><div class="stat"><b>${ar(s.onTime)}</b><span>في معاده</span></div><div class="stat"><b>${ar(s.late)}</b><span>متأخر</span></div><div class="stat"><b>${ar(s.missed)}</b><span>فاته</span></div></div>
+    ${ptsBox(s)}
     <div class="dgrid">${DAYS.map((d) => `<i class="${d.date > t ? 'fu' : readState(u, d.n)}" title="اليوم ${d.n}">${ar(d.n)}</i>`).join('')}</div>
     <p class="legend2" style="justify-content:center;margin-top:8px"><i class="on"></i>في معاده <i class="la"></i>متأخر <i class="no"></i>فاته</p>
     <div class="actions">${waBtn(u, `سلام يا ${first(u.name)} 🌿`)}<button class="btn ghost" id="cl">قفل</button></div></div>`;
