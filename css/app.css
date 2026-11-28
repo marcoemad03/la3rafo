@@ -671,3 +671,4 @@ body:not(.reading) .selbar{bottom:calc(var(--nav-h) + var(--safe-b) + 24px)}
 .bonusf label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
 .bonusf input{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;margin-bottom:8px}
 .bonusf .hint{font-size:11px;margin-top:6px}
+.lrow .pc small{display:block;font-size:10px;font-weight:600;color:var(--muted);text-align:center}.lrow .pc{text-align:center;min-width:44px}

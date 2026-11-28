@@ -51,7 +51,7 @@ function verseHTML(d) {
   return `<section class="card vday" id="vday"><span class="vq">«</span><p class="vt">${esc(txt)}</p><div class="between"><span class="vr">${ref}</span><button class="chip" id="vshare">🖼️ شاركها صورة</button></div></section>`;
 }
 function lampsHTML() {
-  const t = todayCairo(); const rows = S.users.map((u) => ({ u, s: userStats(u, t) })).sort((a, b) => b.s.onTime - a.s.onTime || b.s.read - a.s.read);
+  const t = todayCairo(); const rows = S.users.map((u) => ({ u, s: userStats(u, t) })).sort((a, b) => b.s.points - a.s.points || b.s.onTime - a.s.onTime);
   const i = rows.findIndex((r) => r.u.phone === S.me.phone); if (i < 0 || rows.length < 2) return '';
   const me = rows[i];
   return `<a class="card lamppre" href="#/journey/lamps">${lamp(me.s.consistency / 100, me.s.readToday, 38)}<span class="grow"><b>ترتيبك في لوحة الأمناء: ${ar(i + 1)} من ${ar(rows.length)}</b>
