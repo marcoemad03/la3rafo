@@ -2,7 +2,7 @@
 import { DAYS, ar, fmtDate, todayCairo, BOOKS } from './plan.js';
 import { api, store, QTYPES, qType, qPts } from './data.js';
 import { $, $$, esc, APP, S, reduce, first, avatar, toast, vibrate, meU, topbar, logos, burst, ICON } from './ui.js';
-import { userStats, weekStats, weekRange } from './stats.js';
+import { userStats, weekStats, weekRange, PTS } from './stats.js';
 
 // ---------------------------------------------------------------- the lamp
 let lampN = 0;
@@ -39,7 +39,7 @@ export function journeySegs(tab) {
 }
 function boardLamps(segs) {
   const range = S.boardRange || 'all'; const t = todayCairo();
-  const rows = S.users.map((u) => { const s = userStats(u, t); const w = weekStats(u, t); return { u, s, w, key: range === 'week' ? w.consistency * 1000 + w.onTime * 10 : s.onTime * 10000 + s.read * 100 + s.streak }; })
+  const rows = S.users.map((u) => { const s = userStats(u, t); const w = weekStats(u, t); return { u, s, w, key: range === 'week' ? w.consistency * 1000 + w.onTime * 10 : s.points * 1000 + s.onTime }; })
     .sort((a, b) => b.key - a.key || a.u.name.localeCompare(b.u.name, 'ar'));
   const lvl = (r) => (range === 'week' ? r.w.consistency / 100 : r.s.consistency / 100);
   const top = rows.slice(0, 3); const order = [top[1], top[0], top[2]].filter(Boolean);
@@ -48,16 +48,16 @@ function boardLamps(segs) {
   APP.innerHTML = `<div class="view">${flameDefs}${topbar()}<div class="hello"><h1>لوحة الأمناء</h1><p class="verse-sub">«كُنْتَ أَمِينًا فِي الْقَلِيلِ فَأُقِيمُكَ عَلَى الْكَثِيرِ» (مت ٢٥: ٢١)</p></div>${segs}
   <div class="range"><button class="${range === 'all' ? 'on' : ''}" data-r="all">الرحلة كلها</button><button class="${range === 'week' ? 'on' : ''}" data-r="week">الأسبوع ده</button></div>
   <section class="altar">
-    <p class="altar-note">الزيت = الانتظام في القراءة في معادها، والشعلة = قريت النهارده${range === 'week' ? `<br>من ${fmtDate(ws, false)} لـ ${fmtDate(we, false)}` : ''}</p>
+    <p class="altar-note">${range === 'week' ? 'الترتيب بالقراية في معادها الأسبوع ده' : `النقاط: ${ar(PTS.onTime)} لكل أصحاح في يومه، ${ar(PTS.late)} للمتأخر، ${ar(PTS.q)} لكل إجابة صح`}<br>الزيت = الانتظام، والشعلة = قريت النهارده${range === 'week' ? `<br>من ${fmtDate(ws, false)} لـ ${fmtDate(we, false)}` : ''}</p>
     <div class="podium">${order.map((r) => { const rank = rows.indexOf(r) + 1; return `<div class="pod p${rank} ${r.u.phone === S.me.phone ? 'me' : ''}">
       <div class="pl">${lamp(lvl(r), r.s.readToday, rank === 1 ? 74 : 60)}</div><b class="pn">${esc(first(r.u.name))}</b>
-      <span class="ps">${range === 'week' ? `${ar(r.w.onTime)} من ${ar(r.w.due)}` : `${ar(r.s.consistency)}٪ انتظام`}</span><div class="step"><span>${ar(rank)}</span></div></div>`; }).join('')}</div>
+      <span class="ps">${range === 'week' ? `${ar(r.w.onTime)} من ${ar(r.w.due)}` : `${ar(r.s.points)} نقطة`}</span><div class="step"><span>${ar(rank)}</span></div></div>`; }).join('')}</div>
   </section>
-  ${meRank >= 0 ? `<a class="mepill" href="#me-row">ترتيبك <b>${ar(meRank + 1)}</b> من ${ar(rows.length)}${meRank > 0 ? ` <small>فاضلك ${ar(Math.max(1, Math.ceil((rows[meRank - 1].key - rows[meRank].key) / (range === 'week' ? 1000 : 10000)) || 1))} يوم في معاده وتعدّي اللي قبلك</small>` : ' 👑'}</a>` : ''}
+  ${meRank >= 0 ? `<a class="mepill" href="#me-row">ترتيبك <b>${ar(meRank + 1)}</b> من ${ar(rows.length)}${meRank > 0 ? (range === 'week' ? ` <small>فاضلك ${ar(Math.max(1, Math.ceil((rows[meRank - 1].key - rows[meRank].key) / 1000) || 1))} يوم في معاده وتعدّي اللي قبلك</small>` : ` <small>فاضلك ${ar(Math.max(1, rows[meRank - 1].s.points - rows[meRank].s.points + 1))} نقطة وتعدّي اللي قبلك</small>`) : ' 👑'}</a>` : ''}
   <ol class="lamps">${rows.map((r, i) => `<li class="lrow ${r.u.phone === S.me.phone ? 'me' : ''}" ${r.u.phone === S.me.phone ? 'id="me-row"' : ''} style="--i:${Math.min(i, 14)}">
     <span class="rk">${ar(i + 1)}</span>${lamp(lvl(r), r.s.readToday, 30)}<span class="ln"><b>${esc(r.u.name)}</b>
-    <small>${range === 'week' ? `${ar(r.w.onTime)} يوم في معاده من ${ar(r.w.due)}` : `${ar(r.s.onTime)} في معاده${r.s.late ? ` <i class="lt">${ar(r.s.late)} متأخر</i>` : ''}${r.s.streak > 1 ? ` <i class="st">🔥${ar(r.s.streak)}</i>` : ''}`}</small></span>
-    <span class="pc">${ar(range === 'week' ? r.w.consistency : r.s.consistency)}٪</span></li>`).join('')}</ol>
+    <small>${range === 'week' ? `${ar(r.w.onTime)} يوم في معاده من ${ar(r.w.due)}` : `${ar(r.s.onTime)} في معاده${r.s.late ? ` <i class="lt">${ar(r.s.late)} متأخر</i>` : ''}${r.s.qc ? ` <i class="st">✔️${ar(r.s.qc)} سؤال</i>` : ''}`}</small></span>
+    <span class="pc">${range === 'week' ? `${ar(r.w.consistency)}٪` : `${ar(r.s.points)}<small>نقطة</small>`}</span></li>`).join('')}</ol>
   ${logos()}</div>`;
   $$('.range button').forEach((b) => b.onclick = () => { S.boardRange = b.dataset.r; boardLamps(segs); });
   if (!reduce) $$('.lamp .oil').forEach((o, i) => o.animate([{ transform: 'translateY(60px)' }, { transform: 'none' }], { duration: 1500, easing: 'cubic-bezier(.2,.8,.2,1)', delay: 120 + Math.min(i, 12) * 40, fill: 'backwards' }));
